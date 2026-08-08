@@ -394,15 +394,15 @@ const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
   name.replace(/\.gif$/i,''),
   GITHUB_EMOJI_BASE + encodeURIComponent(name)
 ]).concat([
-  [':bounce:','🤸'], [':boulet2:','🤦'], [':whistle:','😗'], [':champ:','🏆'],
-  [':fusil:','🔫'], [':argh:','😤'], [':thx:','🙏'], [':oops:','😅'],
-  [':omg:','😱'], [':love:','😍'], [':good:','👍'], [':cool:','😎'],
-  [':bow:','🙇'], [':here:','👉'], [':mmm:','🤔'], [':waza:','🤪'],
-  [':sry:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':grr:','😡'], [":'(",'😢'], [':aie:','😖'],
-  [':lol:','😂'], ['>:)', '😈'], ['0_0','😳'], ['8-)','😎'],
-  ['^^','😊'], [':D','😀'], [':p','😛'], [':O','😮'],
-  [':E','😬'], [':@','😠'], [':(','🙁'], [':)','🙂'],
-  [';)', '😉']
+  [':bounce:','https://www.planet-casio.com/images/smileys/bounce.gif'], [':boulet2:','https://www.planet-casio.com/images/smileys/boulet2.gif'], [':whistle:','https://www.planet-casio.com/images/smileys/whistle.gif'], [':champ:','https://www.planet-casio.com/images/smileys/champion.gif'],
+  [':fusil:','https://www.planet-casio.com/images/smileys/fusil.gif'], [':argh:','https://www.planet-casio.com/images/smileys/insults.gif'], [':thx:','https://www.planet-casio.com/images/smileys/merci.gif'], [':oops:','https://www.planet-casio.com/images/smileys/confused2.gif'],
+  [':omg:','https://www.planet-casio.com/images/smileys/shocked2.gif'], [':love:','https://www.planet-casio.com/images/smileys/love.gif'], [':good:','https://www.planet-casio.com/images/smileys/welldone.gif'], [':cool:','https://www.planet-casio.com/images/smileys/cool.gif'],
+  [':bow:','https://www.planet-casio.com/images/smileys/bow.gif'], [':here:','https://www.planet-casio.com/images/smileys/pointer.gif'], [':mmm:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':waza:','https://www.planet-casio.com/images/smileys/waza.gif'],
+  [':sry:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':grr:','https://www.planet-casio.com/images/smileys/evil.gif'], [":'(",'https://www.planet-casio.com/images/smileys/cry.gif'], [':aie:','https://www.planet-casio.com/images/smileys/banghead2.gif'],
+  [':lol:','https://www.planet-casio.com/images/smileys/lol.gif'], ['>:)', 'https://www.planet-casio.com/images/smileys/twisted.gif'], ['0_0','https://www.planet-casio.com/images/smileys/eek.gif'], ['8-)','https://www.planet-casio.com/images/smileys/cool2.gif'],
+  ['^^','https://www.planet-casio.com/images/smileys/eyebrows.gif'], [':D','https://www.planet-casio.com/images/smileys/grin.gif'], [':p','https://www.planet-casio.com/images/smileys/hehe.gif'], [':O','https://www.planet-casio.com/images/smileys/shocked.gif'],
+  [':E','https://www.planet-casio.com/images/smileys/mrgreen.gif'], [':@','https://www.planet-casio.com/images/smileys/mad.gif'], [':(','https://www.planet-casio.com/images/smileys/sad.gif'], [':)','https://www.planet-casio.com/images/smileys/smile.gif'],
+  [';)', 'https://www.planet-casio.com/images/smileys/wink.gif'], [':mdr:','https://www.planet-casio.com/images/smileys/mdr.gif']
 ]);
 function loadEmojis(){
   try{ const raw = localStorage.getItem('emoji_list'); return raw ? JSON.parse(raw) : DEFAULT_EMOJIS.slice(); }catch(e){ return DEFAULT_EMOJIS.slice(); }
