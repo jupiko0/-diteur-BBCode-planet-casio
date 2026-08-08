@@ -226,24 +226,12 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       </div>
       <button class="confirm" id="imgConfirm">Insérer l'image</button>
       <div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">
-        <label style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--text-dim);">Importer depuis fichier / webcam</label>
+        <label style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--text-dim);">Importer depuis fichier</label>
         <input type="file" id="fileInputPhoto" accept="image/*">
-        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-          <button id="startCamPhoto" class="btn-ghost">Activer webcam</button>
-          <button id="captureCamPhoto" class="btn-ghost" disabled>Prendre photo</button>
-          <button id="stopCamPhoto" class="btn-ghost" disabled>Arrêter</button>
-        </div>
-        <div id="camAreaPhoto" style="display:none;margin-top:8px;">
-          <video id="videoPhoto" autoplay playsinline style="width:100%;border-radius:6px;background:#000;max-height:220px;"></video>
-          <canvas id="canvasPhoto" style="display:none;"></canvas>
-        </div>
-        <label id="imgbbKeyLabel" style="font-size:.8rem;color:var(--text-dim);margin-top:6px;display:none;">Clé API imgbb (cachée)</label>
-        <input type="text" id="imgbbKeyPhoto" value="89cdb1f114022cbc5f0dd465a83e83b5" placeholder="YOUR_IMGBB_API_KEY" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;display:none;">
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="importPhotoBtn" class="btn-primary">Importer</button>
-          <button id="clearPhotoBtn" class="btn-ghost">Effacer</button>
+          <button id="importPhotoBtn" class="btn-primary" disabled>Importer</button>
         </div>
-        <div id="resultPhoto" style="margin-top:8px;font-size:.85rem;word-break:break-all;color:var(--teal);"></div>
+        <input type="text" id="imgbbKeyPhoto" value="89cdb1f114022cbc5f0dd465a83e83b5" placeholder="YOUR_IMGBB_API_KEY" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;display:none;">
       </div>
     </div>
   </div>
@@ -1089,16 +1077,14 @@ function applyEdit(el, tag){
 // Photo controls (embedded in the Image panel)
 const fileInputPhoto = document.getElementById('fileInputPhoto');
 const importPhotoBtn = document.getElementById('importPhotoBtn');
-const resultPhoto = document.getElementById('resultPhoto');
 const imgbbKeyPhoto = document.getElementById('imgbbKeyPhoto');
-const imgbbKeyLabel = document.getElementById('imgbbKeyLabel');
 let lastDataUrlPhoto = null;
 
 fileInputPhoto.addEventListener('change', async e=>{
   const f = e.target.files && e.target.files[0];
-  if(!f) return;
+  importPhotoBtn.disabled = !f;
+  if(!f){ lastDataUrlPhoto = null; return; }
   lastDataUrlPhoto = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
-  resultPhoto.textContent = 'Image prête à importer.';
 });
 
 function dataURLtoBlob(dataurl){ const parts = dataurl.split(','); const m = parts[0].match(/:(.*?);/); const mime = m? m[1] : 'image/png'; const bstr = atob(parts[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new Blob([u8],{type:mime}); }
@@ -1108,7 +1094,6 @@ async function uploadToImgbbPhoto(dataUrl){
   if(!key) throw new Error('Clé imgbb non fournie');
   const base64 = dataUrl.replace(/^data:[^;]+;base64,/, '');
   const form = new FormData(); form.append('key', key); form.append('image', base64);
-  resultPhoto.textContent = 'Upload en cours...';
   const res = await fetch('https://api.imgbb.com/1/upload', { method:'POST', body: form });
   const j = await res.json();
   if(!j.success) throw new Error((j.error && j.error.message) || 'Echec imgbb');
@@ -1116,34 +1101,21 @@ async function uploadToImgbbPhoto(dataUrl){
 }
 
 importPhotoBtn.addEventListener('click', async ()=>{
-  if(!lastDataUrlPhoto){ alert('Choisissez une image ou prenez une photo avant d\'importer.'); return; }
+  if(!lastDataUrlPhoto){ alert('Choisissez un fichier avant d\'importer.'); return; }
   try{
     const url = await uploadToImgbbPhoto(lastDataUrlPhoto);
     if(url){
-      // remplir automatiquement le champ d'insertion d'image (sans insérer)
       const imgUrlField = document.getElementById('imgUrl');
       if(imgUrlField){ imgUrlField.value = url; }
-      resultPhoto.innerHTML = 'Importé : <a href="'+url+'" target="_blank">'+url+'</a>';
-      // ouvrir le panneau Image pour que l'utilisateur règle alignement/tailles
       closeAllPopovers();
       panelImg.classList.add('open');
       if(imgUrlField) imgUrlField.focus();
-      lastDataUrlPhoto = null; fileInputPhoto.value = '';
+      lastDataUrlPhoto = null;
+      fileInputPhoto.value = '';
+      importPhotoBtn.disabled = true;
     }
-  }catch(err){ console.error(err); resultPhoto.textContent = 'Échec de l\'import (CORS ou clé incorrecte) : '+err.message; }
+  }catch(err){ console.error(err); alert('Échec de l\'import : '+err.message); }
 });
-
-// Webcam handlers (photo)
-const startCamPhoto = document.getElementById('startCamPhoto');
-const stopCamPhoto = document.getElementById('stopCamPhoto');
-const captureCamPhoto = document.getElementById('captureCamPhoto');
-const videoPhoto = document.getElementById('videoPhoto');
-const canvasPhoto = document.getElementById('canvasPhoto');
-const camAreaPhoto = document.getElementById('camAreaPhoto');
-let streamPhoto = null;
-startCamPhoto.addEventListener('click', async ()=>{ try{ streamPhoto = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); videoPhoto.srcObject = streamPhoto; camAreaPhoto.style.display='block'; captureCamPhoto.disabled=false; stopCamPhoto.disabled=false; startCamPhoto.disabled=true; }catch(e){ alert('Impossible d\'accéder à la webcam : '+e.message); } });
-stopCamPhoto.addEventListener('click', ()=>{ if(streamPhoto){ streamPhoto.getTracks().forEach(t=>t.stop()); streamPhoto=null; } videoPhoto.srcObject=null; camAreaPhoto.style.display='none'; captureCamPhoto.disabled=true; stopCamPhoto.disabled=true; startCamPhoto.disabled=false; });
-captureCamPhoto.addEventListener('click', ()=>{ const w=videoPhoto.videoWidth,h=videoPhoto.videoHeight; canvasPhoto.width=w; canvasPhoto.height=h; const ctx=canvasPhoto.getContext('2d'); ctx.drawImage(videoPhoto,0,0,w,h); lastDataUrlPhoto = canvasPhoto.toDataURL('image/png'); resultPhoto.textContent = 'Photo capturée.'; });
 </script>
 </body>
 
