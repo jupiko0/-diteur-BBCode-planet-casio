@@ -382,14 +382,6 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 
 <script>
 /* ---------- Émojis (tableau par défaut, charges depuis le dépôt GitHub si voulu) ---------- */
-const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
-const GITHUB_EMOJI_FILES = [
-  ':E.gif',
-  ':P.gif',
-  ':LOL.gif',
-  // remplace ces noms par tes fichiers GitHub réels
-  // exemple si ton repo contient :E.gif alors le BBCode sera :E
-];
 const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
   name.replace(/\.gif$/i,''),
   GITHUB_EMOJI_BASE + encodeURIComponent(name)
