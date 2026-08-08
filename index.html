@@ -167,7 +167,6 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 
 <header>
   <h1>Éditeur <span>BBCode</span> — mode Word</h1>
-  <p>Écris directement dans la page : elle EST l'aperçu. Utilise la barre d'outils pour mettre en forme.</p>
 </header>
 
 <div class="ribbon" id="ribbon">
@@ -699,7 +698,21 @@ document.getElementById('videoConfirm').addEventListener('click', ()=>{
 
 // Emoji panel
 const panelEmoji = document.getElementById('panelEmoji');
-togglePopover(document.getElementById('emojiBtn'), panelEmoji);
+const emojiBtn = document.getElementById('emojiBtn');
+if(emojiBtn && panelEmoji){
+  emojiBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    restoreSelection();
+    const willOpen = !panelEmoji.classList.contains('open');
+    closeAllPopovers();
+    if(willOpen){
+      panelEmoji.classList.add('open');
+      buildEmojiGrid();
+      emojiGrid.classList.add('open');
+    }
+  });
+  panelEmoji.addEventListener('click', (e)=> e.stopPropagation());
+}
 
 // Profil
 const panelProfil = document.getElementById('panelProfil');
