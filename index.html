@@ -1064,6 +1064,140 @@ function applyEdit(el, tag){
   updateCount();
 }
 </script>
+
+<!-- UI et scripts d'upload sans clé / imgbb -->
+<div style="position:fixed;right:18px;bottom:18px;z-index:120;">
+  <div style="background:var(--panel);border:1px solid var(--line);padding:10px;border-radius:10px;min-width:300px;color:var(--text);">
+    <strong>Mode Photo / Upload (sans clé possible)</strong>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-direction:column;">
+      <input type="file" id="fileInputAnon" accept="image/*">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="startCamAnon" class="btn-ghost">Activer webcam</button>
+        <button id="captureCamAnon" class="btn-ghost" disabled>Prendre photo</button>
+        <button id="stopCamAnon" class="btn-ghost" disabled>Arrêter</button>
+      </div>
+      <div id="camAreaAnon" style="display:none;margin-top:8px;">
+        <video id="videoAnon" autoplay playsinline style="width:100%;border-radius:6px;background:#000;max-height:220px;"></video>
+        <canvas id="canvasAnon" style="display:none;"></canvas>
+      </div>
+      <label style="font-size:.8rem;color:var(--text-dim);margin-top:6px;">Hébergeur</label>
+      <select id="hostSelAnon" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;">
+        <option value="0x0">0x0.st (sans clé)</option>
+        <option value="catbox">catbox.moe (sans clé)</option>
+        <option value="imgbb">imgbb (clé optionnelle)</option>
+      </select>
+      <label id="imgbbKeyLabelAnon" style="font-size:.8rem;color:var(--text-dim);margin-top:6px;display:none;">Clé API imgbb (collez votre clé)</label>
+      <input type="text" id="imgbbKeyAnon" placeholder="YOUR_IMGBB_API_KEY" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;display:none;">
+      <div style="display:flex;gap:8px;">
+        <button id="uploadAnonBtn" class="btn-primary">Uploader</button>
+        <button id="clearPreviewAnon" class="btn-ghost">Effacer</button>
+      </div>
+      <div id="resultAnon" style="margin-top:8px;font-size:.85rem;word-break:break-all;color:var(--teal);"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Gestion simple upload anonyme (0x0.st et catbox.moe) + imgbb optionnel
+const fileInputAnon = document.getElementById('fileInputAnon');
+const uploadAnonBtn = document.getElementById('uploadAnonBtn');
+const resultAnon = document.getElementById('resultAnon');
+const hostSelAnon = document.getElementById('hostSelAnon');
+const imgbbKeyAnon = document.getElementById('imgbbKeyAnon');
+const imgbbKeyLabelAnon = document.getElementById('imgbbKeyLabelAnon');
+let lastDataUrlAnon = null;
+
+fileInputAnon.addEventListener('change', async e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  lastDataUrlAnon = await new Promise((res,rej)=>{
+    const r = new FileReader(); r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(f);
+  });
+  resultAnon.textContent = 'Image prête.';
+});
+
+hostSelAnon.addEventListener('change', ()=>{
+  const v = hostSelAnon.value;
+  if(v === 'imgbb'){ imgbbKeyAnon.style.display = 'block'; imgbbKeyLabelAnon.style.display = 'block'; }
+  else { imgbbKeyAnon.style.display = 'none'; imgbbKeyLabelAnon.style.display = 'none'; }
+});
+
+function dataURLtoBlob(dataurl){
+  const parts = dataurl.split(',');
+  const m = parts[0].match(/:(.*?);/);
+  const mime = m? m[1] : 'image/png';
+  const bstr = atob(parts[1]);
+  let n = bstr.length; const u8 = new Uint8Array(n);
+  while(n--) u8[n] = bstr.charCodeAt(n);
+  return new Blob([u8], {type:mime});
+}
+
+async function uploadTo0x0Anon(dataUrl){
+  const blob = dataURLtoBlob(dataUrl);
+  const form = new FormData(); form.append('file', blob, 'upload.png');
+  resultAnon.textContent = 'Upload vers 0x0.st...';
+  const res = await fetch('https://0x0.st', { method:'POST', body: form });
+  if(!res.ok) throw new Error('Réponse: '+res.status);
+  return (await res.text()).trim();
+}
+
+async function uploadToCatboxAnon(dataUrl){
+  const blob = dataURLtoBlob(dataUrl);
+  const form = new FormData(); form.append('reqtype','fileupload'); form.append('fileToUpload', blob, 'upload.png');
+  resultAnon.textContent = 'Upload vers catbox.moe...';
+  const res = await fetch('https://catbox.moe/user/api.php', { method:'POST', body: form });
+  if(!res.ok) throw new Error('Réponse: '+res.status);
+  return (await res.text()).trim();
+}
+
+async function uploadToImgbbAnon(dataUrl){
+  const key = imgbbKeyAnon.value.trim();
+  if(!key) throw new Error('Clé imgbb non fournie');
+  const base64 = dataUrl.replace(/^data:[^;]+;base64,/, '');
+  const form = new FormData(); form.append('key', key); form.append('image', base64);
+  resultAnon.textContent = 'Upload vers imgbb...';
+  const res = await fetch('https://api.imgbb.com/1/upload', { method:'POST', body: form });
+  const j = await res.json();
+  if(!j.success) throw new Error((j.error && j.error.message) || 'Echec imgbb');
+  return j.data.display_url || j.data.url || j.data.image && j.data.image.url;
+}
+
+uploadAnonBtn.addEventListener('click', async ()=>{
+  if(!lastDataUrlAnon){ alert('Choisissez une image ou prenez une photo avant d\'uploader.'); return; }
+  const host = hostSelAnon.value;
+  try{
+    let url = null;
+    if(host === '0x0'){
+      try{ url = await uploadTo0x0Anon(lastDataUrlAnon); }
+      catch(e){ console.warn('0x0.st failed:', e); url = await uploadToCatboxAnon(lastDataUrlAnon); }
+    } else if(host === 'catbox'){
+      url = await uploadToCatboxAnon(lastDataUrlAnon);
+    } else if(host === 'imgbb'){
+      url = await uploadToImgbbAnon(lastDataUrlAnon);
+    }
+    if(url){ resultAnon.innerHTML = 'URL: <a href="'+url+'" target="_blank">'+url+'</a>'; const img=document.createElement('img'); img.src=url; editor.appendChild(img); }
+  }catch(err){
+    console.error(err);
+    resultAnon.textContent = 'Échec de l\'upload (possible blocage CORS). Si échec, utilisez une clé imgbb ou uploadez via un serveur.';
+  }
+});
+
+// Webcam (anonyme) — logique identique à la précédente implémentation
+const startCamAnon = document.getElementById('startCamAnon');
+const stopCamAnon = document.getElementById('stopCamAnon');
+const captureCamAnon = document.getElementById('captureCamAnon');
+const videoAnon = document.getElementById('videoAnon');
+const canvasAnon = document.getElementById('canvasAnon');
+const camAreaAnon = document.getElementById('camAreaAnon');
+let streamAnon = null;
+startCamAnon.addEventListener('click', async ()=>{
+  try{ streamAnon = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); videoAnon.srcObject = streamAnon; camAreaAnon.style.display='block'; captureCamAnon.disabled=false; stopCamAnon.disabled=false; startCamAnon.disabled=true; }
+  catch(e){ alert('Impossible d\'accéder à la webcam : '+e.message); }
+});
+stopCamAnon.addEventListener('click', ()=>{ if(streamAnon){ streamAnon.getTracks().forEach(t=>t.stop()); streamAnon=null; } videoAnon.srcObject=null; camAreaAnon.style.display='none'; captureCamAnon.disabled=true; stopCamAnon.disabled=true; startCamAnon.disabled=false; });
+captureCamAnon.addEventListener('click', ()=>{ const w=videoAnon.videoWidth,h=videoAnon.videoHeight; canvasAnon.width=w; canvasAnon.height=h; const ctx=canvasAnon.getContext('2d'); ctx.drawImage(videoAnon,0,0,w,h); lastDataUrlAnon = canvasAnon.toDataURL('image/png'); resultAnon.textContent = 'Photo capturée.'; });
+
+</script>
 </body>
 
 </html>
