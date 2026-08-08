@@ -1106,9 +1106,9 @@ let lastDataUrlPhoto = null;
 bPhoto.addEventListener('click', ()=>{
   const willOpen = photoPanel.style.display === 'none';
   photoPanel.style.display = willOpen ? 'block' : 'none';
-  // montrer le champ clé uniquement quand l'utilisateur ouvre le panneau
-  imgbbKeyPhoto.style.display = willOpen ? 'block' : 'none';
-  imgbbKeyLabel.style.display = willOpen ? 'block' : 'none';
+  // garder la clé API cachée (utilisée en interne seulement)
+  imgbbKeyPhoto.style.display = 'none';
+  imgbbKeyLabel.style.display = 'none';
 });
 
 fileInputPhoto.addEventListener('change', async e=>{
@@ -1137,13 +1137,16 @@ importPhotoBtn.addEventListener('click', async ()=>{
   try{
     const url = await uploadToImgbbPhoto(lastDataUrlPhoto);
     if(url){
-      // remplir automatiquement le champ d'insertion d'image et insérer l'image
+      // remplir automatiquement le champ d'insertion d'image (sans insérer)
       const imgUrlField = document.getElementById('imgUrl');
       if(imgUrlField){ imgUrlField.value = url; }
-      const img = document.createElement('img'); img.src = url; editor.appendChild(img);
       resultPhoto.innerHTML = 'Importé : <a href="'+url+'" target="_blank">'+url+'</a>';
-      // fermer le panneau
-      photoPanel.style.display = 'none'; imgbbKeyPhoto.style.display='none'; imgbbKeyLabel.style.display='none';
+      // ouvrir le panneau Image pour que l'utilisateur règle alignement/tailles
+      closeAllPopovers();
+      panelImg.classList.add('open');
+      if(imgUrlField) imgUrlField.focus();
+      // fermer le panneau photo
+      photoPanel.style.display = 'none';
       lastDataUrlPhoto = null; fileInputPhoto.value = '';
     }
   }catch(err){ console.error(err); resultPhoto.textContent = 'Échec de l\'import (CORS ou clé incorrecte) : '+err.message; }
