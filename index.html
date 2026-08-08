@@ -231,7 +231,12 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
         </div>
       </div>
       <button class="confirm" id="imgConfirm">Insérer l'image</button>
-      <!-- Import d'images désactivé : utilise l'URL ci-dessus pour insérer une image -->
+      <label>Ou téléverser depuis votre ordinateur</label>
+      <div class="row">
+        <div><input type="file" id="imgFile" accept="image/*"></div>
+        <div style="flex:0 0 120px;"><button class="confirm" id="imgUpload">Téléverser</button></div>
+      </div>
+      <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;">Téléversement via imgbb (clé locale fournie).</div>
     </div>
   </div>
   <div class="pop-wrap">
@@ -1147,6 +1152,71 @@ const imgUrlField = document.getElementById('imgUrl');
 const videoUrlField = document.getElementById('videoUrl');
 // image import disabled
 let originalImgSize = null;
+
+// imgbb configuration (clé fournie par l'utilisateur)
+const IMGBB_API_KEY = '89cdb1f114022cbc5f0dd465a83e83b5';
+
+async function uploadImageToImgbb(file){
+  if(!file) throw new Error('Aucun fichier');
+  const reader = new FileReader();
+  const base64 = await new Promise((res, rej)=>{
+    reader.onload = ()=>{
+      const dataUrl = String(reader.result || '');
+      const m = dataUrl.match(/^data:.*;base64,(.*)$/);
+      if(m) res(m[1]); else rej(new Error('Impossible de lire le fichier'));
+    };
+    reader.onerror = ()=> rej(new Error('Erreur de lecture du fichier'));
+    reader.readAsDataURL(file);
+  });
+
+  const form = new FormData();
+  form.append('image', base64);
+
+  const url = 'https://api.imgbb.com/1/upload?key=' + encodeURIComponent(IMGBB_API_KEY);
+  const resp = await fetch(url, { method: 'POST', body: form });
+  if(!resp.ok) throw new Error('Échec du téléversement ('+resp.status+')');
+  const j = await resp.json();
+  if(!j || !j.data) throw new Error('Réponse invalide du service');
+  return j.data.url || j.data.display_url || j.data.image?.url;
+}
+
+// file input handling: preview dimensions from file and upload handler
+const imgFileInput = document.getElementById('imgFile');
+if(imgFileInput){
+  imgFileInput.addEventListener('change', (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(f) {
+      const reader = new FileReader();
+      reader.onload = ()=>{ loadFileDimensions(String(reader.result || '')); };
+      reader.readAsDataURL(f);
+    }
+  });
+}
+
+const imgUploadBtn = document.getElementById('imgUpload');
+if(imgUploadBtn){
+  imgUploadBtn.addEventListener('click', async ()=>{
+    const f = imgFileInput && imgFileInput.files && imgFileInput.files[0];
+    if(!f){ alert('Choisissez un fichier image à téléverser.'); return; }
+    imgUploadBtn.disabled = true; imgUploadBtn.textContent = 'Téléversement...';
+    try{
+      const uploadedUrl = await uploadImageToImgbb(f);
+      if(uploadedUrl){
+        imgUrlField.value = uploadedUrl;
+        loadImageDimensions(uploadedUrl);
+        // insère l'image avec les options actuelles
+        document.getElementById('imgConfirm').click();
+      } else {
+        alert('Téléversement terminé mais aucune URL retournée.');
+      }
+    }catch(err){
+      console.error(err);
+      alert('Erreur lors du téléversement : ' + (err.message || err));
+    }finally{
+      imgUploadBtn.disabled = false; imgUploadBtn.textContent = 'Téléverser';
+    }
+  });
+}
 
 function setOriginalImageSize(width, height){
   originalImgSize = { width, height };
