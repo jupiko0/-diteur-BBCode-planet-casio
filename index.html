@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Éditeur BBCode — mode Word</title>
+<style>
+:root{
+  --bg:#191b21;
+  --panel:#20232b;
+  --panel-2:#262a34;
+  --line:#333846;
+  --text:#e7e9ee;
+  --text-dim:#9aa0af;
+  --accent:#ff8c42;
+  --teal:#4ec9b0;
+  --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+  --disp:'Space Grotesk',Arial,sans-serif;
+  --body:'Inter',Arial,sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
+header{padding:20px 28px 14px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
+header h1{font-family:var(--disp);font-size:1.4rem;margin:0;letter-spacing:.3px;}
+header h1 span{color:var(--accent);}
+header p{margin:0;color:var(--text-dim);font-size:.82rem;}
+
+.ribbon{
+  position:sticky;top:0;z-index:30;
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  padding:10px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
+}
+.ribbon button{
+  background:var(--bg);border:1px solid var(--line);color:var(--text);
+  padding:6px 11px;border-radius:6px;font-family:var(--body);font-size:.8rem;cursor:pointer;transition:.15s;
+}
+.ribbon button:hover{border-color:var(--accent);color:var(--accent);}
+.ribbon button.active{background:var(--accent);color:#1a1200;border-color:var(--accent);}
+.ribbon button b, .ribbon button i, .ribbon button u, .ribbon button s{font-family:var(--disp);}
+.ribbon select{
+  background:var(--bg);border:1px solid var(--line);color:var(--text);
+  padding:6px 8px;border-radius:6px;font-size:.8rem;
+}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px;}
+.emoji-pop{position:relative;}
+.emoji-grid{
+  display:none;position:absolute;top:110%;left:0;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:8px;padding:8px;
+  grid-template-columns:repeat(8,28px);gap:4px;z-index:40;box-shadow:0 10px 30px #0008;
+}
+.emoji-grid.open{display:grid;}
+.emoji-grid button{padding:2px;font-size:1.1rem;border-radius:5px;border:none;background:transparent;}
+.emoji-grid button:hover{background:var(--line);}
+
+.pop-wrap{position:relative;display:inline-block;}
+.pop-panel{
+  display:none;position:absolute;top:110%;left:0;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:8px;padding:12px;min-width:230px;
+  z-index:40;box-shadow:0 10px 30px #0008;
+}
+.pop-panel.open{display:block;}
+.pop-panel label{display:block;font-size:.7rem;color:var(--text-dim);margin:8px 0 4px;}
+.pop-panel label:first-child{margin-top:0;}
+.pop-panel input, .pop-panel select{
+  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
+  padding:6px 8px;border-radius:5px;font-size:.8rem;
+}
+.pop-panel .row{display:flex;gap:8px;}
+.pop-panel .row > div{flex:1;}
+.pop-panel button.confirm{
+  margin-top:10px;width:100%;background:var(--accent);color:#1a1200;border:none;
+  padding:7px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;
+}
+.pop-panel button.confirm:hover{filter:brightness(1.08);}
+
+.canvas{
+  background:#2b2e37;
+  padding:44px 20px 60px;
+  display:flex;justify-content:center;
+  min-height:60vh;
+}
+#editor{
+  background:#fdfdfb;
+  color:#1c1c1c;
+  width:100%;max-width:800px;min-height:65vh;
+  padding:56px 64px;
+  box-shadow:0 14px 40px #0008, 0 0 0 1px #0003;
+  border-radius:2px;
+  font-family:'Calibri','Segoe UI',Arial,sans-serif;
+  font-size:1.02rem;line-height:1.65;
+  outline:none;
+}
+#editor .bb-quote{
+  border-left:3px solid var(--accent);background:#f4f1ea;margin:10px 0;padding:8px 14px;border-radius:0 6px 6px 0;
+}
+#editor .q-author{font-style:italic;font-size:.82rem;color:#777;margin-bottom:4px;}
+#editor .bb-code{
+  background:#161821;color:#d7dae2;border:1px solid #333;border-radius:6px;
+  padding:10px 12px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;
+  white-space:pre-wrap;
+}
+#editor .bb-spoiler-block{border:1px solid #a02222;border-radius:6px;margin:10px 0;overflow:hidden;}
+#editor .bb-spoiler-label{background:#a02222;color:#fff;font-weight:700;font-size:.8rem;padding:6px 12px;}
+#editor .bb-spoiler-body{padding:10px 12px;}
+#editor .bb-progress-block{margin:10px 0;}
+#editor .bb-progress-outer{border:1px solid #ccc;border-radius:4px;overflow:hidden;height:24px;background:#eee;max-width:400px;}
+#editor .bb-progress-inner{background:var(--accent);height:100%;display:flex;align-items:center;padding-left:8px;color:#241800;font-weight:700;font-size:.78rem;outline:none;}
+#editor .bb-profil{color:#1a6ea8;font-weight:600;text-decoration:underline dotted;cursor:default;}
+#editor img{max-width:100%;}
+#editor img, #editor video, #editor a, #editor .bb-profil, #editor .bb-quote, #editor .bb-spoiler-block, #editor .bb-progress-block{
+  cursor:context-menu;
+}
+#editor a{color:#1a6ea8;}
+
+.actions{display:flex;gap:10px;padding:16px 28px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);}
+.btn-primary{background:var(--accent);color:#1a1200;border:none;padding:10px 20px;border-radius:8px;font-weight:700;font-family:var(--disp);cursor:pointer;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text-dim);padding:10px 16px;border-radius:8px;cursor:pointer;}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
+#wordCount{margin-left:auto;color:var(--text-dim);font-family:var(--mono);font-size:.75rem;}
+
+#exportWrap{display:none;margin:0 28px 28px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+#exportWrap.open{display:block;}
+
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
+  z-index:100;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:22px;width:100%;max-width:620px;box-shadow:0 20px 60px #000a;
+}
+.modal-box h3{margin:0 0 6px;font-family:var(--disp);color:var(--text);}
+.modal-box p{margin:0 0 12px;color:var(--text-dim);font-size:.82rem;}
+.modal-box textarea{
+  width:100%;min-height:220px;background:var(--bg);color:var(--teal);
+  font-family:var(--mono);font-size:.82rem;border:1px solid var(--line);
+  border-radius:6px;padding:12px;resize:vertical;
+}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
+#exportHead{padding:10px 16px;background:var(--panel-2);font-family:var(--mono);font-size:.75rem;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;}
+#exportText{width:100%;min-height:160px;border:none;background:var(--panel);color:var(--teal);font-family:var(--mono);font-size:.85rem;padding:16px;resize:vertical;}
+
+details{margin:0 28px 28px;border:1px solid var(--line);border-radius:10px;background:var(--panel);}
+summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--text-dim);font-size:.85rem;}
+.ref{padding:0 16px 16px;font-family:var(--mono);font-size:.76rem;color:var(--text-dim);line-height:1.9;}
+.ref b{color:var(--text);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Éditeur <span>BBCode</span> — mode Word</h1>
+  <p>Écris directement dans la page : elle EST l'aperçu. Utilise la barre d'outils pour mettre en forme.</p>
+</header>
+
+<div class="ribbon" id="ribbon">
+  <button id="bBold"><b>G</b></button>
+  <button id="bItalic"><i>I</i></button>
+  <button id="bUnderline"><u>S</u></button>
+  <button id="bStrike"><s>B</s></button>
+  <div class="sep"></div>
+  <button id="bCenter">Centrer</button>
+  <button id="bJustify">Justifier</button>
+  <button id="bSmall">Petit</button>
+  <button id="bBig">Grand</button>
+  <div class="sep"></div>
+  <div class="pop-wrap">
+    <select id="colorSel">
+      <option value="">Couleur…</option>
+      <option value="normal">normal</option>
+      <option value="custom">personnalisé…</option>
+      <option value="red" style="color:#e0453b;">rouge</option>
+      <option value="blue" style="color:#3b7fe0;">bleu</option>
+      <option value="green" style="color:#3bb054;">vert</option>
+      <option value="yellow" style="color:#c9b800;">jaune</option>
+      <option value="maroon" style="color:#7a1f2b;">bourdeaux</option>
+      <option value="purple" style="color:#8b3be0;">violet</option>
+      <option value="gray" style="color:#8a8f9c;">gris</option>
+      <option value="brown" style="color:#8a5a2b;">marron</option>
+    </select>
+    <div class="pop-panel" id="panelCustomColor">
+      <label>Couleur personnalisée</label>
+      <div class="row">
+        <div style="flex:0 0 46px;"><input type="color" id="customColorPicker" value="#00a1fe" style="height:34px;padding:2px;"></div>
+        <div><input type="text" id="customColorHex" value="#00A1FE" placeholder="#00A1FE"></div>
+      </div>
+      <button class="confirm" id="customColorConfirm">Appliquer la couleur</button>
+    </div>
+  </div>
+  <select id="fontSel">
+    <option value="">Police…</option>
+    <option value="normal">normal</option>
+    <option value="arial" style="font-family:Arial, sans-serif;">arial</option>
+    <option value="courier" style="font-family:'Courier New', monospace;">courier</option>
+    <option value="tahoma" style="font-family:Tahoma, sans-serif;">tahoma</option>
+    <option value="comic" style="font-family:'Comic Sans MS', cursive;">comic</option>
+    <option value="haettenschweiler" style="font-family:Haettenschweiler, Impact, sans-serif;">version 1.0</option>
+  </select>
+  <div class="sep"></div>
+  <div class="pop-wrap">
+    <button id="bLink">Lien</button>
+    <div class="pop-panel" id="panelLink">
+      <label>Adresse du lien</label>
+      <input type="text" id="linkUrl" placeholder="https://...">
+      <label>Nom du lien (facultatif, ignoré si texte sélectionné)</label>
+      <input type="text" id="linkName" placeholder="texte affiché">
+      <button class="confirm" id="linkConfirm">Insérer le lien</button>
+    </div>
+  </div>
+  <div class="pop-wrap">
+    <button id="bImg">Image</button>
+    <div class="pop-panel" id="panelImg">
+      <label>Adresse de l'image</label>
+      <input type="text" id="imgUrl" placeholder="https://...">
+      <label>Alignement</label>
+      <select id="imgAlign">
+        <option value="">Aucun</option>
+        <option value="float-left">Flottant à gauche</option>
+        <option value="float-right">Flottant à droite</option>
+        <option value="center">Centré</option>
+      </select>
+      <div class="row">
+        <div><label>Largeur (px)</label><input type="number" id="imgW" placeholder="ex: 200"></div>
+        <div><label>Hauteur (px)</label><input type="number" id="imgH" placeholder="ex: 150"></div>
+      </div>
+      <button class="confirm" id="imgConfirm">Insérer l'image</button>
+    </div>
+  </div>
+  <div class="pop-wrap">
+    <button id="bVideo">Vidéo</button>
+    <div class="pop-panel" id="panelVideo">
+      <label>Adresse de la vidéo</label>
+      <input type="text" id="videoUrl" placeholder="https://...">
+      <button class="confirm" id="videoConfirm">Insérer la vidéo</button>
+    </div>
+  </div>
+  <div class="pop-wrap">
+    <button id="bProfil">Profil</button>
+    <div class="pop-panel" id="panelProfil">
+      <label>Nom du profil</label>
+      <input type="text" id="profilName" placeholder="pseudo">
+      <button class="confirm" id="profilConfirm">Insérer le profil</button>
+    </div>
+  </div>
+  <button id="bCode">Code</button>
+  <button id="bQuote">Citation</button>
+  <div class="pop-wrap">
+    <button id="bSpoiler">Spoiler</button>
+    <div class="pop-panel" id="panelSpoiler">
+      <label>Texte du bouton replié</label>
+      <input type="text" id="spoilerClosed" value="Afficher le spoiler">
+      <label>Texte du bouton déplié</label>
+      <input type="text" id="spoilerOpen" value="Masquer le spoiler">
+      <button class="confirm" id="spoilerConfirm">Insérer le spoiler</button>
+    </div>
+  </div>
+  <div class="pop-wrap">
+    <button id="bProgress">Barre progrès</button>
+    <div class="pop-panel" id="panelProgress">
+      <label>Pourcentage (0-100)</label>
+      <input type="number" id="progPct" value="50" min="0" max="100">
+      <label>Titre</label>
+      <input type="text" id="progTitle" placeholder="ex: Chargement">
+      <button class="confirm" id="progConfirm">Insérer la barre</button>
+    </div>
+  </div>
+  <div class="emoji-pop">
+    <button id="emojiBtn">Emoji ▾</button>
+    <div class="emoji-grid" id="emojiGrid"></div>
+  </div>
+</div>
+
+<div class="canvas">
+  <div id="editor" contenteditable="true" spellcheck="true"><div>Bienvenue sur l'éditeur <strong>BBCode</strong> — écris directement ici, <em>comme dans Word</em>. Sélectionne du texte puis clique sur un bouton de la barre d'outils.</div><div>Essaie une <font color="#e0453b">couleur</font>, un <a href="https://example.com">lien</a>, ou un emoji 🙂.</div><blockquote class="bb-quote" data-author="Toto"><div class="q-author">Toto a écrit :</div><div class="q-body">Une citation d'exemple.</div></blockquote><div class="bb-progress-block" data-pct="65"><div class="bb-progress-outer"><div class="bb-progress-inner" contenteditable="true" style="width:65%">Chargement</div></div></div></div>
+</div>
+
+<div class="actions">
+  <button class="btn-primary" id="exportBtn">Exporter en texte</button>
+  <button class="btn-ghost" id="copyBtn" style="display:none;">Copier le texte</button>
+  <button class="btn-ghost" id="importBtn">Importer BBCode</button>
+  <button class="btn-ghost" id="clearBtn">Vider la page</button>
+  <span id="copyMsg" style="color:var(--teal);font-family:var(--mono);font-size:.78rem;"></span>
+  <span id="wordCount">0 mots</span>
+</div>
+
+<div id="exportWrap">
+  <div id="exportHead">EXPORT — texte avec les balises</div>
+  <textarea id="exportText" readonly></textarea>
+</div>
+
+<div class="modal-overlay" id="importOverlay">
+  <div class="modal-box">
+    <h3>Importer du BBCode</h3>
+    <p>Colle ton texte avec les balises ci-dessous, puis clique sur Importer. Ça remplace tout le contenu de la page.</p>
+    <textarea id="importText" placeholder="[b]Bonjour[/b] [red]le monde[/red] :)&#10;[quote=Toto]une citation[/quote]"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="importCancel">Annuler</button>
+      <button class="btn-primary" id="importConfirm">Importer</button>
+    </div>
+  </div>
+</div>
+
+<div class="pop-panel" id="editPanel" style="position:fixed;"></div>
+
+<details>
+  <summary>Aide-mémoire des balises BBCode générées</summary>
+  <div class="ref">
+    <b>Lien :</b> [url=http://site]nom(facultatif)[/url]<br>
+    <b>Police :</b> [arial] [courier] [tahoma] [comic] [haettenschweiler]<br>
+    <b>Couleur :</b> [red] [blue] [green] [yellow] [maroon] [purple] [gray] [brown] ou [color=#00A1FE]…[/color]<br>
+    <b>Image :</b> [img]url[/img] · [img=float-left]url[/img] · [img=center]url[/img] · [img=LxH|float-right]url[/img]<br>
+    <b>Vidéo :</b> [video]url[/video] · <b>Profil :</b> [profil]nom[/profil] · <b>Code :</b> [code]…[/code]<br>
+    <b>Citation :</b> [quote=auteur]…[/quote] · <b>Spoiler :</b> [spoiler=replié|déplié]…[/spoiler]<br>
+    <b>Barre de progression :</b> [progress=50]titre[/progress]<br>
+    <b>Style :</b> [i] [b] [u] [strike] [center] [justify] [small] [big]
+  </div>
+</details>
+
+<script>
+/* ---------- Émojis ---------- */
+const EMOJIS = [
+  [':bounce:','🤸'], [':boulet2:','🤦'], [':whistle:','😗'], [':champ:','🏆'],
+  [':fusil:','🔫'], [':argh:','😤'], [':thx:','🙏'], [':oops:','😅'],
+  [':omg:','😱'], [':love:','😍'], [':good:','👍'], [':cool:','😎'],
+  [':bow:','🙇'], [':here:','👉'], [':mmm:','🤔'], [':waza:','🤪'],
+  [':sry:','😔'], [':grr:','😡'], [":'(",'😢'], [':aie:','😖'],
+  [':lol:','😂'], ['>:)','😈'], ['0_0','😳'], ['8-)','😎'],
+  ['^^','😊'], [':D','😀'], [':p','😛'], [':O','😮'],
+  [':E','😬'], [':@','😠'], [':(','🙁'], [':)','🙂'],
+  [';)','😉']
+];
+const GLYPH_TO_CODE = {};
+EMOJIS.forEach(([code,glyph])=>{ GLYPH_TO_CODE[glyph] = code; });
+
+const COLOR_MAP = {red:'#e0453b',blue:'#3b7fe0',green:'#3bb054',yellow:'#c9b800',maroon:'#7a1f2b',purple:'#8b3be0',gray:'#8a8f9c',brown:'#8a5a2b'};
+const COLOR_MAP_REV = {}; Object.keys(COLOR_MAP).forEach(k=> COLOR_MAP_REV[COLOR_MAP[k].toLowerCase()] = k);
+function normalizeColor(str){
+  if(!str) return '';
+  const m = str.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if(!m) return str.trim().toLowerCase();
+  const toHex = n=> Math.max(0,Math.min(255,parseInt(n,10))).toString(16).padStart(2,'0');
+  return '#'+toHex(m[1])+toHex(m[2])+toHex(m[3]);
+}
+const FONT_MAP = {arial:'Arial, sans-serif',courier:'Courier New, monospace',tahoma:'Tahoma, sans-serif',comic:'Comic Sans MS, cursive',haettenschweiler:'Haettenschweiler, Impact, sans-serif'};
+const FONT_MAP_REV = {}; Object.keys(FONT_MAP).forEach(k=> FONT_MAP_REV[FONT_MAP[k]] = k);
+
+const editor = document.getElementById('editor');
+
+/* ---------- Sélection : sauvegarde / restauration ---------- */
+let savedRange = null;
+function saveSelection(){
+  const sel = window.getSelection();
+  if(sel.rangeCount>0 && editor.contains(sel.anchorNode)){
+    savedRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+document.addEventListener('selectionchange', ()=>{ saveSelection(); updateToolbarState(); });
+editor.addEventListener('keyup', ()=>{ saveSelection(); updateToolbarState(); });
+editor.addEventListener('mouseup', ()=>{ saveSelection(); updateToolbarState(); });
+
+function restoreSelection(){
+  editor.focus();
+  if(savedRange){
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+}
+
+function getSelectionHTML(){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return '';
+  const div = document.createElement('div');
+  div.appendChild(sel.getRangeAt(0).cloneContents());
+  return div.innerHTML;
+}
+
+function hasSelection(){
+  const sel = window.getSelection();
+  return sel.rangeCount>0 && !sel.getRangeAt(0).collapsed;
+}
+
+function isCmdActive(command){
+  try{ return document.queryCommandState(command); }catch(e){ return false; }
+}
+
+function closestInSelection(selector){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return null;
+  let node = sel.anchorNode;
+  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  if(!node || !editor.contains(node)) return null;
+  return node.closest(selector);
+}
+
+function unwrapElement(el){
+  const parent = el.parentNode;
+  while(el.firstChild) parent.insertBefore(el.firstChild, el);
+  parent.removeChild(el);
+}
+
+function getBlockAncestor(node){
+  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  if(!node || !editor.contains(node)) return null;
+  while(node && node.parentElement !== editor){
+    node = node.parentElement;
+    if(!node) return null;
+  }
+  return node;
+}
+
+function setActive(id, on){
+  document.getElementById(id).classList.toggle('active', !!on);
+}
+
+function updateToolbarState(){
+  setActive('bBold', isCmdActive('bold'));
+  setActive('bItalic', isCmdActive('italic'));
+  setActive('bUnderline', isCmdActive('underline'));
+  setActive('bStrike', isCmdActive('strikeThrough'));
+  const block = getBlockAncestor(window.getSelection().anchorNode);
+  const align = block ? block.style.textAlign : '';
+  setActive('bCenter', align === 'center');
+  setActive('bJustify', align === 'justify');
+  setActive('bSmall', !!closestInSelection('small'));
+  setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
+}
+
+/* ---------- Boutons de mise en forme native ---------- */
+function cmd(command, value){
+  restoreSelection();
+  document.execCommand(command, false, value || null);
+  saveSelection();
+  updateCount();
+  updateToolbarState();
+}
+
+/* Centrer / Justifier : on gère nous-mêmes le bloc concerné plutôt que
+   execCommand (qui pouvait s'appliquer au mauvais élément et "activer en
+   cachette" un alignement ailleurs dans la page). */
+function toggleAlign(align){
+  restoreSelection();
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return;
+  const block = getBlockAncestor(sel.anchorNode);
+  if(!block) return;
+  block.style.textAlign = (block.style.textAlign === align) ? '' : align;
+  saveSelection();
+  updateCount();
+  updateToolbarState();
+}
+document.getElementById('bBold').addEventListener('click', ()=> cmd('bold'));
+document.getElementById('bItalic').addEventListener('click', ()=> cmd('italic'));
+document.getElementById('bUnderline').addEventListener('click', ()=> cmd('underline'));
+document.getElementById('bStrike').addEventListener('click', ()=> cmd('strikeThrough'));
+document.getElementById('bCenter').addEventListener('click', ()=> toggleAlign('center'));
+document.getElementById('bJustify').addEventListener('click', ()=> toggleAlign('justify'));
+
+function removeFormatting(selector){
+  restoreSelection();
+  const existing = closestInSelection(selector);
+  if(existing) unwrapElement(existing);
+  saveSelection();
+  updateToolbarState();
+  updateCount();
+}
+
+document.getElementById('colorSel').addEventListener('change', function(){
+  const val = this.value;
+  if(val === 'normal'){
+    closeAllPopovers();
+    removeFormatting('font[color]');
+    this.value = '';
+  } else if(val === 'custom'){
+    closeAllPopovers();
+    document.getElementById('panelCustomColor').classList.add('open');
+    this.value = '';
+  } else if(val){
+    closeAllPopovers();
+    cmd('foreColor', COLOR_MAP[val]);
+    this.value = '';
+  }
+});
+// Après un choix dans le menu déroulant natif, le navigateur émet un
+// "click" qui remonte jusqu'à document APRÈS le "change" — sans ceci,
+// ce click referme aussitôt le panneau "personnalisé" qu'on vient d'ouvrir.
+document.getElementById('colorSel').addEventListener('click', (e)=> e.stopPropagation());
+
+document.getElementById('fontSel').addEventListener('change', function(){
+  const val = this.value;
+  if(val === 'normal'){
+    removeFormatting('font[face]');
+    this.value = '';
+  } else if(val){
+    cmd('fontName', FONT_MAP[val]);
+    this.value = '';
+  }
+});
+
+/* Couleur personnalisée : [color=#hex]...[/color] */
+const panelCustomColor = document.getElementById('panelCustomColor');
+panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
+const customColorPicker = document.getElementById('customColorPicker');
+const customColorHex = document.getElementById('customColorHex');
+customColorPicker.addEventListener('input', ()=>{ customColorHex.value = customColorPicker.value; });
+customColorHex.addEventListener('input', ()=>{
+  if(/^#[0-9a-fA-F]{6}$/.test(customColorHex.value)) customColorPicker.value = customColorHex.value;
+});
+document.getElementById('customColorConfirm').addEventListener('click', ()=>{
+  let hex = customColorHex.value.trim();
+  if(!/^#[0-9a-fA-F]{3,8}$/.test(hex)) hex = customColorPicker.value;
+  cmd('foreColor', hex);
+  document.getElementById('panelCustomColor').classList.remove('open');
+});
+
+/* ---------- Petit / Grand (encapsulation manuelle, nécessite une sélection) ---------- */
+function wrapTag(openTag, closeTag){
+  const html = getSelectionHTML();
+  document.execCommand('insertHTML', false, openTag+html+closeTag);
+}
+document.getElementById('bSmall').addEventListener('click', ()=>{
+  restoreSelection();
+  const existing = closestInSelection('small');
+  if(existing){ unwrapElement(existing); }
+  else if(hasSelection()){ wrapTag('<small>','</small>'); }
+  saveSelection();
+  updateCount();
+  updateToolbarState();
+});
+document.getElementById('bBig').addEventListener('click', ()=>{
+  restoreSelection();
+  const existing = closestInSelection('span[style*="font-size"]');
+  if(existing){ unwrapElement(existing); }
+  else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
+  saveSelection();
+  updateCount();
+  updateToolbarState();
+});
+
+/* ---------- Insertion de blocs (lien, image, vidéo, profil, code, citation, spoiler, progression) ---------- */
+function insertHTMLAtCursor(html){
+  restoreSelection();
+  document.execCommand('insertHTML', false, html);
+  saveSelection();
+  updateCount();
+}
+
+/* ---------- Popovers de formulaire (lien, image, vidéo, profil, spoiler, progression) ---------- */
+const allPopovers = document.querySelectorAll('.pop-panel, .emoji-grid');
+function closeAllPopovers(except){
+  allPopovers.forEach(p=>{ if(p!==except) p.classList.remove('open'); });
+}
+function togglePopover(btn, panel){
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    restoreSelection(); // capture la sélection actuelle AVANT de perdre le focus
+    const willOpen = !panel.classList.contains('open');
+    closeAllPopovers();
+    if(willOpen) panel.classList.add('open');
+  });
+  panel.addEventListener('click', (e)=> e.stopPropagation());
+  panel.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); panel.querySelector('.confirm').click(); }
+    });
+  });
+}
+document.addEventListener('click', ()=> closeAllPopovers());
+
+// Lien
+const panelLink = document.getElementById('panelLink');
+togglePopover(document.getElementById('bLink'), panelLink);
+document.getElementById('linkConfirm').addEventListener('click', ()=>{
+  const url = document.getElementById('linkUrl').value.trim();
+  if(!url) return;
+  const nameField = document.getElementById('linkName').value.trim();
+  const text = hasSelection() ? getSelectionHTML() : (nameField || url);
+  insertHTMLAtCursor(`<a href="${url}" target="_blank">${text}</a>`);
+  document.getElementById('linkUrl').value=''; document.getElementById('linkName').value='';
+  closeAllPopovers();
+});
+
+// Image
+const panelImg = document.getElementById('panelImg');
+togglePopover(document.getElementById('bImg'), panelImg);
+document.getElementById('imgConfirm').addEventListener('click', ()=>{
+  const url = document.getElementById('imgUrl').value.trim();
+  if(!url) return;
+  const align = document.getElementById('imgAlign').value;
+  const w = document.getElementById('imgW').value.trim();
+  const h = document.getElementById('imgH').value.trim();
+  let optsParts = [];
+  if(w && h) optsParts.push(`${w}x${h}`);
+  if(align) optsParts.push(align);
+  const opts = optsParts.join('|');
+  let style = 'max-width:100%;';
+  if(align === 'float-left') style += 'float:left;margin:4px 10px 4px 0;';
+  else if(align === 'float-right') style += 'float:right;margin:4px 0 4px 10px;';
+  else if(align === 'center') style += 'display:block;margin:6px auto;';
+  if(w && h) style += `width:${w}px;height:${h}px;`;
+  const dataOpts = opts ? ` data-bb-opts="${opts.replace(/"/g,'&quot;')}"` : '';
+  insertHTMLAtCursor(`<img src="${url}" style="${style}"${dataOpts}>`);
+  document.getElementById('imgUrl').value=''; document.getElementById('imgAlign').value='';
+  document.getElementById('imgW').value=''; document.getElementById('imgH').value='';
+  closeAllPopovers();
+});
+
+// Vidéo
+const panelVideo = document.getElementById('panelVideo');
+togglePopover(document.getElementById('bVideo'), panelVideo);
+document.getElementById('videoConfirm').addEventListener('click', ()=>{
+  const url = document.getElementById('videoUrl').value.trim();
+  if(!url) return;
+  insertHTMLAtCursor(`<video controls src="${url}" style="max-width:100%;"></video>`);
+  document.getElementById('videoUrl').value='';
+  closeAllPopovers();
+});
+
+// Profil
+const panelProfil = document.getElementById('panelProfil');
+togglePopover(document.getElementById('bProfil'), panelProfil);
+document.getElementById('profilConfirm').addEventListener('click', ()=>{
+  const name = document.getElementById('profilName').value.trim();
+  if(!name) return;
+  insertHTMLAtCursor(`<span class="bb-profil" contenteditable="false">${name}</span>&nbsp;`);
+  document.getElementById('profilName').value='';
+  closeAllPopovers();
+});
+
+// Spoiler
+const panelSpoiler = document.getElementById('panelSpoiler');
+togglePopover(document.getElementById('bSpoiler'), panelSpoiler);
+document.getElementById('spoilerConfirm').addEventListener('click', ()=>{
+  const closed = document.getElementById('spoilerClosed').value.trim() || 'Afficher le spoiler';
+  const open = document.getElementById('spoilerOpen').value.trim() || 'Masquer le spoiler';
+  const body = hasSelection() ? getSelectionHTML() : "entrer le contenu du spoiler ici";
+  insertHTMLAtCursor(`<div class="bb-spoiler-block" data-closed="${closed.replace(/"/g,'&quot;')}" data-open="${open.replace(/"/g,'&quot;')}"><div class="bb-spoiler-label" contenteditable="false">🔒 spoiler — replié : "${closed}" / déplié : "${open}"</div><div class="bb-spoiler-body" contenteditable="true">${body}</div></div><div><br></div>`);
+  closeAllPopovers();
+});
+
+// Barre de progression
+const panelProgress = document.getElementById('panelProgress');
+togglePopover(document.getElementById('bProgress'), panelProgress);
+document.getElementById('progConfirm').addEventListener('click', ()=>{
+  let pct = Math.max(0, Math.min(100, parseInt(document.getElementById('progPct').value,10) || 0));
+  const title = document.getElementById('progTitle').value.trim();
+  insertHTMLAtCursor(`<div class="bb-progress-block" data-pct="${pct}"><div class="bb-progress-outer"><div class="bb-progress-inner" contenteditable="true" style="width:${pct}%">${title}</div></div></div><div><br></div>`);
+  document.getElementById('progTitle').value='';
+  closeAllPopovers();
+});
+
+document.getElementById('bCode').addEventListener('click', ()=>{
+  restoreSelection();
+  const content = hasSelection() ? (window.getSelection().toString()) : 'votre code ici';
+  insertHTMLAtCursor(`<pre class="bb-code"><code contenteditable="true">${content.replace(/</g,'&lt;')}</code></pre><div><br></div>`);
+});
+
+document.getElementById('bQuote').addEventListener('click', ()=>{
+  const author = prompt("Auteur de la citation (facultatif) :", "") || "";
+  restoreSelection();
+  const body = hasSelection() ? getSelectionHTML() : "entrer la citation ici";
+  const label = author ? `<div class="q-author">${author} a écrit :</div>` : '';
+  insertHTMLAtCursor(`<blockquote class="bb-quote"${author?` data-author="${author.replace(/"/g,'&quot;')}"`:''}>${label}<div class="q-body" contenteditable="true">${body}</div></blockquote><div><br></div>`);
+});
+
+/* ---------- Emojis ---------- */
+const emojiGrid = document.getElementById('emojiGrid');
+EMOJIS.slice().reverse().forEach(([code,glyph])=>{
+  const b = document.createElement('button');
+  b.textContent = glyph; b.title = code;
+  b.addEventListener('click', ()=>{ insertHTMLAtCursor(glyph); closeAllPopovers(); });
+  emojiGrid.appendChild(b);
+});
+document.getElementById('emojiBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const willOpen = !emojiGrid.classList.contains('open');
+  closeAllPopovers();
+  if(willOpen) emojiGrid.classList.add('open');
+});
+emojiGrid.addEventListener('click', (e)=> e.stopPropagation());
+
+/* ---------- Compteur de mots ---------- */
+const wordCount = document.getElementById('wordCount');
+function updateCount(){
+  const words = editor.innerText.trim().split(/\s+/).filter(Boolean);
+  wordCount.textContent = words.length + ' mots';
+}
+editor.addEventListener('input', updateCount);
+updateCount();
+updateToolbarState();
+
+/* ---------- Vider la page ---------- */
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  if(confirm("Vider toute la page ?")){
+    editor.innerHTML = '<div><br></div>';
+    updateCount();
+  }
+});
+
+/* ---------- Sérialiseur HTML -> BBCode ---------- */
+function emojiTextToCode(str){
+  let out = str;
+  Object.keys(GLYPH_TO_CODE).forEach(glyph=>{ out = out.split(glyph).join(GLYPH_TO_CODE[glyph]); });
+  return out;
+}
+
+function nodeToBBCode(node){
+  if(node.nodeType === Node.TEXT_NODE) return emojiTextToCode(node.textContent);
+  if(node.nodeType !== Node.ELEMENT_NODE) return '';
+
+  const tag = node.tagName;
+  if(tag === 'BR') return '\n';
+
+  const childrenBB = Array.from(node.childNodes).map(nodeToBBCode).join('');
+
+  switch(tag){
+    case 'STRONG': case 'B': return `[b]${childrenBB}[/b]`;
+    case 'EM': case 'I': return `[i]${childrenBB}[/i]`;
+    case 'U': return `[u]${childrenBB}[/u]`;
+    case 'S': case 'STRIKE': case 'DEL': return `[strike]${childrenBB}[/strike]`;
+    case 'SMALL': return `[small]${childrenBB}[/small]`;
+    case 'FONT': {
+      let r = childrenBB;
+      const color = normalizeColor(node.getAttribute('color')||'');
+      const face = node.getAttribute('face')||'';
+      if(color){
+        if(COLOR_MAP_REV[color]) r = `[${COLOR_MAP_REV[color]}]${r}[/${COLOR_MAP_REV[color]}]`;
+        else r = `[color=${color}]${r}[/color]`;
+      }
+      if(face && FONT_MAP_REV[face]) r = `[${FONT_MAP_REV[face]}]${r}[/${FONT_MAP_REV[face]}]`;
+      return r;
+    }
+    case 'A': {
+      const href = node.getAttribute('href')||'';
+      return `[url=${href}]${childrenBB || href}[/url]`;
+    }
+    case 'IMG': {
+      const opts = node.getAttribute('data-bb-opts') || '';
+      const srcv = node.getAttribute('src')||'';
+      return opts ? `[img=${opts}]${srcv}[/img]` : `[img]${srcv}[/img]`;
+    }
+    case 'VIDEO': {
+      const srcv = node.getAttribute('src') || (node.querySelector('source') ? node.querySelector('source').getAttribute('src') : '');
+      return `[video]${srcv}[/video]`;
+    }
+    case 'PRE': {
+      if(node.classList.contains('bb-code')) return `[code]${node.textContent}[/code]\n`;
+      return childrenBB;
+    }
+    case 'BLOCKQUOTE': {
+      if(node.classList.contains('bb-quote')){
+        const author = node.getAttribute('data-author') || '';
+        const body = node.querySelector('.q-body');
+        const bodyBB = body ? Array.from(body.childNodes).map(nodeToBBCode).join('') : childrenBB;
+        return (author ? `[quote=${author}]${bodyBB}[/quote]` : `[quote]${bodyBB}[/quote]`) + '\n';
+      }
+      return childrenBB;
+    }
+    case 'SPAN': {
+      if(node.classList.contains('bb-profil')) return `[profil]${node.textContent}[/profil]`;
+      let r = childrenBB;
+      const style = node.getAttribute('style') || '';
+      if(/color\s*:/.test(style)){
+        const m = style.match(/color\s*:\s*([^;]+)/);
+        const hex = m ? normalizeColor(m[1]) : '';
+        if(hex){
+          if(COLOR_MAP_REV[hex]) r = `[${COLOR_MAP_REV[hex]}]${r}[/${COLOR_MAP_REV[hex]}]`;
+          else r = `[color=${hex}]${r}[/color]`;
+        }
+      }
+      if(/font-size/.test(style)) r = `[big]${r}[/big]`;
+      if(/font-family/.test(style)){
+        const m = style.match(/font-family\s*:\s*([^;]+)/);
+        const fam = m ? m[1].trim() : '';
+        if(FONT_MAP_REV[fam]) r = `[${FONT_MAP_REV[fam]}]${r}[/${FONT_MAP_REV[fam]}]`;
+      }
+      return r;
+    }
+    case 'DIV': case 'P': {
+      if(node.classList.contains('bb-spoiler-block')){
+        const closed = node.getAttribute('data-closed') || 'Afficher';
+        const open = node.getAttribute('data-open') || 'Masquer';
+        const body = node.querySelector('.bb-spoiler-body');
+        const bodyBB = body ? Array.from(body.childNodes).map(nodeToBBCode).join('') : '';
+        return `[spoiler=${closed}|${open}]${bodyBB}[/spoiler]\n`;
+      }
+      if(node.classList.contains('bb-progress-block')){
+        const pct = node.getAttribute('data-pct') || '0';
+        const inner = node.querySelector('.bb-progress-inner');
+        const title = inner ? inner.textContent : '';
+        return `[progress=${pct}]${title}[/progress]\n`;
+      }
+      const align = (node.style && node.style.textAlign) || '';
+      let r = childrenBB;
+      if(align === 'center') r = `[center]${r}[/center]`;
+      else if(align === 'justify') r = `[justify]${r}[/justify]`;
+      return r + '\n';
+    }
+    default:
+      return childrenBB;
+  }
+}
+
+function exportToBBCode(){
+  const topNodes = Array.from(editor.childNodes).filter(n=>
+    !(n.nodeType === Node.TEXT_NODE && n.textContent.trim() === '')
+  );
+  let out = topNodes.map(nodeToBBCode).join('');
+  out = out.replace(/\n{3,}/g, '\n\n').replace(/^[ \t\n]+|[ \t\n]+$/g, '');
+  return out;
+}
+
+/* ---------- Importateur BBCode -> HTML ---------- */
+function parseInlineBBCode(str){
+  let t = str;
+
+  t = t.replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, (m,u,txt)=> `<a href="${u}" target="_blank">${txt||u}</a>`);
+  t = t.replace(/\[url\]([\s\S]*?)\[\/url\]/gi, (m,u)=> `<a href="${u}" target="_blank">${u}</a>`);
+
+  Object.keys(FONT_MAP).forEach(f=>{
+    const re = new RegExp(`\\[${f}\\]([\\s\\S]*?)\\[\\/${f}\\]`,'gi');
+    t = t.replace(re, (m,c)=> `<font face="${FONT_MAP[f]}">${c}</font>`);
+  });
+
+  Object.keys(COLOR_MAP).forEach(c=>{
+    const re = new RegExp(`\\[${c}\\]([\\s\\S]*?)\\[\\/${c}\\]`,'gi');
+    t = t.replace(re, (m,txt)=> `<font color="${COLOR_MAP[c]}">${txt}</font>`);
+  });
+
+  t = t.replace(/\[color=(#[0-9a-fA-F]{3,8})\]([\s\S]*?)\[\/color\]/gi, (m,hex,txt)=> `<font color="${hex}">${txt}</font>`);
+
+  t = t.replace(/\[img(?:=([^\]]+))?\]([\s\S]*?)\[\/img\]/gi, (m,opts,url)=>{
+    let style = 'max-width:100%;';
+    if(opts){
+      opts.split('|').map(s=>s.trim()).forEach(p=>{
+        if(p==='float-left') style += 'float:left;margin:4px 10px 4px 0;';
+        else if(p==='float-right') style += 'float:right;margin:4px 0 4px 10px;';
+        else if(p==='center') style += 'display:block;margin:6px auto;';
+        else if(/^\d+x\d+$/i.test(p)){ const [w,h]=p.split('x'); style += `width:${w}px;height:${h}px;`; }
+      });
+    }
+    const dataOpts = opts ? ` data-bb-opts="${opts.replace(/"/g,'&quot;')}"` : '';
+    return `<img src="${url.trim()}" style="${style}"${dataOpts}>`;
+  });
+
+  t = t.replace(/\[video\]([\s\S]*?)\[\/video\]/gi, (m,url)=> `<video controls src="${url.trim()}" style="max-width:100%;"></video>`);
+
+  t = t.replace(/\[profil\]([\s\S]*?)\[\/profil\]/gi, (m,txt)=> `<span class="bb-profil" contenteditable="false">${txt}</span>&nbsp;`);
+
+  t = t.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '<strong>$1</strong>');
+  t = t.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<em>$1</em>');
+  t = t.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '<u>$1</u>');
+  t = t.replace(/\[strike\]([\s\S]*?)\[\/strike\]/gi, '<s>$1</s>');
+  t = t.replace(/\[small\]([\s\S]*?)\[\/small\]/gi, '<small>$1</small>');
+  t = t.replace(/\[big\]([\s\S]*?)\[\/big\]/gi, '<span style="font-size:1.6em">$1</span>');
+
+  EMOJIS.forEach(([code,glyph])=>{
+    const esc = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    t = t.replace(new RegExp(esc,'g'), glyph);
+  });
+
+  return t;
+}
+
+function bbcodeToHTML(raw){
+  let text = raw.replace(/\r\n/g,'\n');
+  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const blocks = [];
+  function stash(html){ const token = '\u0001B'+blocks.length+'\u0001'; blocks.push(html); return token; }
+
+  text = text.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (m,c)=>
+    stash(`<pre class="bb-code"><code contenteditable="true">${c}</code></pre>`)
+  );
+
+  text = text.replace(/\[quote(?:=([^\]]*))?\]([\s\S]*?)\[\/quote\]/gi, (m,author,content)=>{
+    const body = parseInlineBBCode(content).replace(/\n/g,'<br>');
+    const label = author ? `<div class="q-author">${author} a écrit :</div>` : '';
+    const authorAttr = author ? ` data-author="${author.replace(/"/g,'&quot;')}"` : '';
+    return stash(`<blockquote class="bb-quote"${authorAttr}>${label}<div class="q-body" contenteditable="true">${body}</div></blockquote>`);
+  });
+
+  text = text.replace(/\[spoiler(?:=([^\]]*))?\]([\s\S]*?)\[\/spoiler\]/gi, (m,opts,content)=>{
+    let closed='Afficher le spoiler', open='Masquer le spoiler';
+    if(opts){ const p = opts.split('|'); if(p[0]) closed=p[0].trim(); if(p[1]) open=p[1].trim(); }
+    const body = parseInlineBBCode(content).replace(/\n/g,'<br>');
+    return stash(`<div class="bb-spoiler-block" data-closed="${closed.replace(/"/g,'&quot;')}" data-open="${open.replace(/"/g,'&quot;')}"><div class="bb-spoiler-label" contenteditable="false">🔒 spoiler — replié : "${closed}" / déplié : "${open}"</div><div class="bb-spoiler-body" contenteditable="true">${body}</div></div>`);
+  });
+
+  text = text.replace(/\[progress=(\d+)\]([\s\S]*?)\[\/progress\]/gi, (m,pct,title)=>{
+    const p = Math.max(0, Math.min(100, parseInt(pct,10) || 0));
+    return stash(`<div class="bb-progress-block" data-pct="${p}"><div class="bb-progress-outer"><div class="bb-progress-inner" contenteditable="true" style="width:${p}%">${parseInlineBBCode(title)}</div></div></div>`);
+  });
+
+  text = text.replace(/\[center\]([\s\S]*?)\[\/center\]/gi, (m,c)=>
+    stash(`<div style="text-align:center">${parseInlineBBCode(c).replace(/\n/g,'<br>')}</div>`)
+  );
+  text = text.replace(/\[justify\]([\s\S]*?)\[\/justify\]/gi, (m,c)=>
+    stash(`<div style="text-align:justify">${parseInlineBBCode(c).replace(/\n/g,'<br>')}</div>`)
+  );
+
+  text = parseInlineBBCode(text);
+
+  const lines = text.split('\n');
+  const htmlLines = lines.map(line=>{
+    const trimmed = line.trim();
+    const blockMatch = trimmed.match(/^\u0001B(\d+)\u0001$/);
+    if(blockMatch) return blocks[parseInt(blockMatch[1],10)];
+    const withBlocks = line.replace(/\u0001B(\d+)\u0001/g, (mm,i)=> blocks[parseInt(i,10)]);
+    return `<div>${withBlocks || '<br>'}</div>`;
+  });
+  return htmlLines.join('');
+}
+
+/* ---------- Modal d'import ---------- */
+const importOverlay = document.getElementById('importOverlay');
+const importText = document.getElementById('importText');
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  closeAllPopovers();
+  importOverlay.classList.add('open');
+  importText.focus();
+});
+document.getElementById('importCancel').addEventListener('click', ()=> importOverlay.classList.remove('open'));
+importOverlay.addEventListener('click', (e)=>{ if(e.target === importOverlay) importOverlay.classList.remove('open'); });
+document.getElementById('importConfirm').addEventListener('click', ()=>{
+  const raw = importText.value;
+  if(!raw.trim()) return;
+  editor.innerHTML = bbcodeToHTML(raw);
+  importOverlay.classList.remove('open');
+  importText.value = '';
+  updateCount();
+  updateToolbarState();
+});
+
+/* ---------- Export ---------- */
+const exportWrap = document.getElementById('exportWrap');
+const exportText = document.getElementById('exportText');
+const copyBtn = document.getElementById('copyBtn');
+const copyMsg = document.getElementById('copyMsg');
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  exportText.value = exportToBBCode();
+  exportWrap.classList.add('open');
+  copyBtn.style.display = 'inline-block';
+  exportWrap.scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+copyBtn.addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(exportText.value); copyMsg.textContent = 'Copié ✓'; }
+  catch(e){ exportText.select(); document.execCommand('copy'); copyMsg.textContent = 'Copié ✓'; }
+  setTimeout(()=> copyMsg.textContent='', 1800);
+});
+
+/* ---------- Clic droit : modifier un élément déjà inséré ---------- */
+const editPanel = document.getElementById('editPanel');
+editPanel.addEventListener('click', (e)=> e.stopPropagation());
+
+function esc(str){ return String(str).replace(/"/g,'&quot;'); }
+
+function closeEditPanel(){ editPanel.classList.remove('open'); editPanel.innerHTML=''; }
+
+editor.addEventListener('contextmenu', (e)=>{
+  let t = e.target;
+  if(t.nodeType === Node.TEXT_NODE) t = t.parentElement;
+  const el = t ? t.closest('img, video, a, .bb-profil, .bb-quote, .bb-spoiler-block, .bb-progress-block') : null;
+  if(!el) return; // laisse le menu contextuel normal ailleurs (texte simple)
+  e.preventDefault();
+  openEditMenu(el, e.clientX, e.clientY);
+});
+
+function openEditMenu(el, x, y){
+  closeAllPopovers();
+  const tag = el.tagName;
+  let html = '';
+
+  if(tag === 'IMG'){
+    html = `<label>Adresse de l'image</label><input type="text" id="editUrl" value="${esc(el.getAttribute('src'))}">
+      <label>Options (float-left, float-right, center, LxH, LxH|center…)</label><input type="text" id="editOpts" value="${esc(el.getAttribute('data-bb-opts')||'')}">`;
+  } else if(tag === 'VIDEO'){
+    html = `<label>Adresse de la vidéo</label><input type="text" id="editUrl" value="${esc(el.getAttribute('src'))}">`;
+  } else if(tag === 'A'){
+    html = `<label>Adresse du lien</label><input type="text" id="editUrl" value="${esc(el.getAttribute('href'))}">
+      <label>Texte affiché</label><input type="text" id="editText" value="${esc(el.textContent)}">`;
+  } else if(el.classList.contains('bb-profil')){
+    html = `<label>Nom du profil</label><input type="text" id="editText" value="${esc(el.textContent)}">`;
+  } else if(el.classList.contains('bb-quote')){
+    html = `<label>Auteur (facultatif)</label><input type="text" id="editAuthor" value="${esc(el.getAttribute('data-author')||'')}">`;
+  } else if(el.classList.contains('bb-spoiler-block')){
+    html = `<label>Texte du bouton replié</label><input type="text" id="editClosed" value="${esc(el.getAttribute('data-closed')||'')}">
+      <label>Texte du bouton déplié</label><input type="text" id="editOpen" value="${esc(el.getAttribute('data-open')||'')}">`;
+  } else if(el.classList.contains('bb-progress-block')){
+    const inner = el.querySelector('.bb-progress-inner');
+    html = `<label>Pourcentage (0-100)</label><input type="number" id="editPct" min="0" max="100" value="${esc(el.getAttribute('data-pct')||'0')}">
+      <label>Titre</label><input type="text" id="editTitle" value="${esc(inner ? inner.textContent : '')}">`;
+  } else {
+    return;
+  }
+
+  html += `<button class="confirm" id="editSave">Mettre à jour</button>
+    <button class="confirm" id="editDelete" style="background:#a02222;color:#fff;margin-top:6px;">Supprimer</button>`;
+
+  editPanel.innerHTML = html;
+  editPanel.style.left = Math.min(x, window.innerWidth-260) + 'px';
+  editPanel.style.top = Math.min(y, window.innerHeight-280) + 'px';
+  editPanel.classList.add('open');
+
+  editPanel.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('keydown', (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); document.getElementById('editSave').click(); } });
+  });
+  document.getElementById('editSave').addEventListener('click', ()=>{ applyEdit(el, tag); closeEditPanel(); });
+  document.getElementById('editDelete').addEventListener('click', ()=>{ el.remove(); closeEditPanel(); updateCount(); });
+}
+
+function applyEdit(el, tag){
+  if(tag === 'IMG'){
+    const url = document.getElementById('editUrl').value.trim();
+    const opts = document.getElementById('editOpts').value.trim();
+    if(url) el.setAttribute('src', url);
+    let style = 'max-width:100%;';
+    opts.split('|').map(s=>s.trim()).filter(Boolean).forEach(p=>{
+      if(p==='float-left') style += 'float:left;margin:4px 10px 4px 0;';
+      else if(p==='float-right') style += 'float:right;margin:4px 0 4px 10px;';
+      else if(p==='center') style += 'display:block;margin:6px auto;';
+      else if(/^\d+x\d+$/i.test(p)){ const [w,h]=p.split('x'); style += `width:${w}px;height:${h}px;`; }
+    });
+    el.setAttribute('style', style);
+    if(opts) el.setAttribute('data-bb-opts', opts); else el.removeAttribute('data-bb-opts');
+  } else if(tag === 'VIDEO'){
+    const url = document.getElementById('editUrl').value.trim();
+    if(url) el.setAttribute('src', url);
+  } else if(tag === 'A'){
+    const url = document.getElementById('editUrl').value.trim();
+    const text = document.getElementById('editText').value;
+    if(url) el.setAttribute('href', url);
+    el.textContent = text || url;
+  } else if(el.classList.contains('bb-profil')){
+    el.textContent = document.getElementById('editText').value;
+  } else if(el.classList.contains('bb-quote')){
+    const author = document.getElementById('editAuthor').value.trim();
+    let label = el.querySelector('.q-author');
+    if(author){
+      el.setAttribute('data-author', author);
+      if(!label){ label = document.createElement('div'); label.className='q-author'; el.insertBefore(label, el.firstChild); }
+      label.textContent = author + ' a écrit :';
+    } else {
+      el.removeAttribute('data-author');
+      if(label) label.remove();
+    }
+  } else if(el.classList.contains('bb-spoiler-block')){
+    const closed = document.getElementById('editClosed').value.trim() || 'Afficher le spoiler';
+    const open = document.getElementById('editOpen').value.trim() || 'Masquer le spoiler';
+    el.setAttribute('data-closed', closed);
+    el.setAttribute('data-open', open);
+    const label = el.querySelector('.bb-spoiler-label');
+    if(label) label.textContent = `🔒 spoiler — replié : "${closed}" / déplié : "${open}"`;
+  } else if(el.classList.contains('bb-progress-block')){
+    const pct = Math.max(0, Math.min(100, parseInt(document.getElementById('editPct').value,10) || 0));
+    const title = document.getElementById('editTitle').value;
+    el.setAttribute('data-pct', pct);
+    const inner = el.querySelector('.bb-progress-inner');
+    if(inner){ inner.style.width = pct+'%'; inner.textContent = title; }
+  }
+  updateCount();
+}
+</script>
+</body>
+
+</html>
