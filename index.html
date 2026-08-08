@@ -72,6 +72,7 @@ header p{margin:0;color:var(--text-dim);font-size:.82rem;}
 }
 .pop-panel button.confirm.red{background:#a02222;color:#fff;}
 .pop-panel button.confirm:hover{filter:brightness(1.08);}
+.emoji-codes{margin-top:10px;color:var(--text-dim);font-size:.75rem;line-height:1.5;word-break:break-word;}
 .img-preview-wrapper{display:none;margin:12px auto 0;max-width:calc(100% - 20px);text-align:center;}
 .img-preview-wrapper img{display:block;margin:0 auto;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;}
 
@@ -322,6 +323,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
     <button id="emojiBtn">Emoji ▾</button>
       <div class="pop-panel" id="panelEmoji">
         <div class="emoji-grid" id="emojiGrid"></div>
+        <div class="emoji-codes" id="emojiCodes"></div>
         <label>Ajouter un emoji (URL)</label>
         <input type="text" id="emojiUrl" placeholder="https://...">
         <label>Code/nom (facultatif)</label>
@@ -379,8 +381,19 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 </details>
 
 <script>
-/* ---------- Émojis (tableau par défaut, utilisateur peut ajouter des URLs via le panneau) ---------- */
-const DEFAULT_EMOJIS = [
+/* ---------- Émojis (tableau par défaut, charges depuis le dépôt GitHub si voulu) ---------- */
+const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
+const GITHUB_EMOJI_FILES = [
+  ':E.gif',
+  ':P.gif',
+  ':LOL.gif',
+  // remplace ces noms par tes fichiers GitHub réels
+  // exemple si ton repo contient :E.gif alors le BBCode sera :E
+];
+const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
+  name.replace(/\.gif$/i,''),
+  GITHUB_EMOJI_BASE + encodeURIComponent(name)
+]).concat([
   [':bounce:','🤸'], [':boulet2:','🤦'], [':whistle:','😗'], [':champ:','🏆'],
   [':fusil:','🔫'], [':argh:','😤'], [':thx:','🙏'], [':oops:','😅'],
   [':omg:','😱'], [':love:','😍'], [':good:','👍'], [':cool:','😎'],
@@ -390,7 +403,7 @@ const DEFAULT_EMOJIS = [
   ['^^','😊'], [':D','😀'], [':p','😛'], [':O','😮'],
   [':E','😬'], [':@','😠'], [':(','🙁'], [':)','🙂'],
   [';)', '😉']
-];
+]);
 function loadEmojis(){
   try{ const raw = localStorage.getItem('emoji_list'); return raw ? JSON.parse(raw) : DEFAULT_EMOJIS.slice(); }catch(e){ return DEFAULT_EMOJIS.slice(); }
 }
@@ -830,12 +843,16 @@ function buildEmojiGrid(){
       b.textContent = val; b.style.fontSize = '18px';
     }
     b.addEventListener('click', ()=>{
-      if(isUrl(val)) insertHTMLAtCursor(`<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`);
-      else insertHTMLAtCursor(val);
+      if(isUrl(val)) insertHTMLAtCursor(` <img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}" contenteditable="false"> `);
+      else insertHTMLAtCursor(` ${val} `);
       closeAllPopovers();
     });
     emojiGrid.appendChild(b);
   });
+  const codesEl = document.getElementById('emojiCodes');
+  if(codesEl){
+    codesEl.textContent = 'Codes BBCode disponibles : ' + EMOJIS.map(([code])=>code).join(' ');
+  }
 }
 
 // Emoji popover toggle
@@ -905,6 +922,10 @@ function nodeToBBCode(node){
       return `[url=${href}]${childrenBB || href}[/url]`;
     }
     case 'IMG': {
+      const emojiCode = node.getAttribute('data-emoji-code');
+      if(emojiCode){
+        return ` ${emojiCode} `;
+      }
       const opts = node.getAttribute('data-bb-opts') || '';
       const srcv = node.getAttribute('src')||'';
       return opts ? `[img=${opts}]${srcv}[/img]` : `[img]${srcv}[/img]`;
