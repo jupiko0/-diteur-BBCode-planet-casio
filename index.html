@@ -1217,6 +1217,20 @@ if(imgUploadBtn){
   });
 }
 
+// Quand l'utilisateur modifie le pourcentage, recalcule les pixels
+if(imgPctField){
+  imgPctField.addEventListener('input', ()=>{
+    if(!originalImgSize && imgUrlField && imgUrlField.value) loadImageDimensions(imgUrlField.value.trim());
+    updateSizeFromPercent();
+  });
+}
+
+// Si l'utilisateur colle / change l'URL manuellement, charge les dimensions
+if(imgUrlField){
+  imgUrlField.addEventListener('change', ()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); });
+  imgUrlField.addEventListener('paste', ()=> setTimeout(()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); }, 50));
+}
+
 function setOriginalImageSize(width, height){
   originalImgSize = { width, height };
   if(!imgWField.value && !imgHField.value){
