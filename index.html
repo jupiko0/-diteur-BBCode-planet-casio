@@ -1204,8 +1204,7 @@ if(imgUploadBtn){
       if(uploadedUrl){
         imgUrlField.value = uploadedUrl;
         loadImageDimensions(uploadedUrl);
-        // insère l'image avec les options actuelles
-        document.getElementById('imgConfirm').click();
+        // L'URL est remplie automatiquement — cliquez sur "Insérer l'image" pour l'ajouter après ajustements.
       } else {
         alert('Téléversement terminé mais aucune URL retournée.');
       }
