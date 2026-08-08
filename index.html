@@ -324,12 +324,6 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <div class="pop-panel" id="panelEmoji">
         <div class="emoji-grid" id="emojiGrid"></div>
         <div class="emoji-codes" id="emojiCodes"></div>
-        <label>Ajouter un emoji (URL)</label>
-        <input type="text" id="emojiUrl" placeholder="https://...">
-        <label>Code/nom (facultatif)</label>
-        <input type="text" id="emojiName" placeholder=":nom:">
-        <button class="confirm" id="emojiAdd">Ajouter</button>
-        <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;">Les emojis sont stockés localement dans ton navigateur.</div>
       </div>
   </div>
 </div>
@@ -705,15 +699,6 @@ document.getElementById('videoConfirm').addEventListener('click', ()=>{
 // Emoji panel
 const panelEmoji = document.getElementById('panelEmoji');
 togglePopover(document.getElementById('emojiBtn'), panelEmoji);
-document.getElementById('emojiAdd').addEventListener('click', ()=>{
-  const url = document.getElementById('emojiUrl').value.trim();
-  const name = document.getElementById('emojiName').value.trim();
-  if(!url) return;
-  addEmoji(url, name);
-  document.getElementById('emojiUrl').value = '';
-  document.getElementById('emojiName').value = '';
-  panelEmoji.classList.remove('open');
-});
 
 // Profil
 const panelProfil = document.getElementById('panelProfil');
@@ -849,14 +834,6 @@ function buildEmojiGrid(){
 
 // Emoji popover toggle
 emojiGrid.addEventListener('click', (e)=> e.stopPropagation());
-
-// Emoji add panel (in the DOM as #panelEmoji)
-function addEmoji(url, code){
-  if(!url) return;
-  EMOJIS.push([code || url, url]);
-  saveEmojis(EMOJIS);
-  buildEmojiGrid();
-}
 
 /* ---------- Compteur de mots ---------- */
 const wordCount = document.getElementById('wordCount');
