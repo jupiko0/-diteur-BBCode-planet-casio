@@ -856,12 +856,6 @@ function buildEmojiGrid(){
 }
 
 // Emoji popover toggle
-document.getElementById('emojiBtn').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  const willOpen = !emojiGrid.classList.contains('open') && !document.getElementById('panelEmoji').classList.contains('open');
-  closeAllPopovers();
-  if(willOpen) emojiGrid.classList.add('open');
-});
 emojiGrid.addEventListener('click', (e)=> e.stopPropagation());
 
 // Emoji add panel (in the DOM as #panelEmoji)
