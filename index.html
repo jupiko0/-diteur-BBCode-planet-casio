@@ -250,8 +250,10 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">
         <label style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--text-dim);">Importer depuis fichier</label>
         <input type="file" id="fileInputVideo" accept="video/*">
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button id="importVideoBtn" class="btn-primary" disabled>Importer</button>
+        <input type="text" id="videoPath" placeholder="chemin dans le repo (ex: video1.mp4)" style="width:100%;margin-top:8px;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;">
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button id="uploadVideoRepoBtn" class="btn-primary" disabled>Uploader dans le repo</button>
+          <button id="importVideoBtn" class="btn-primary" disabled>Importer via Mux</button>
         </div>
       </div>
     </div>
@@ -1104,6 +1106,8 @@ const imgHField = document.getElementById('imgH');
 const imgUrlField = document.getElementById('imgUrl');
 const fileInputVideo = document.getElementById('fileInputVideo');
 const importVideoBtn = document.getElementById('importVideoBtn');
+const uploadVideoRepoBtn = document.getElementById('uploadVideoRepoBtn');
+const videoPathField = document.getElementById('videoPath');
 const videoUrlField = document.getElementById('videoUrl');
 let lastDataUrlPhoto = null;
 let originalImgSize = null;
@@ -1197,7 +1201,68 @@ importPhotoBtn.addEventListener('click', async ()=>{
 fileInputVideo.addEventListener('change', e => {
   const f = e.target.files && e.target.files[0];
   lastVideoFile = f || null;
-  importVideoBtn.disabled = !f;
+  const hasFile = !!f;
+  importVideoBtn.disabled = !hasFile;
+  uploadVideoRepoBtn.disabled = !hasFile;
+  if (f && !videoPathField.value.trim()) {
+    videoPathField.value = f.name;
+  }
+});
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Impossible de lire le fichier')); 
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadVideoToGitHubRepo(file, targetPath){
+  if(!file) throw new Error('Aucun fichier sélectionné');
+  const path = String(targetPath || file.name).trim();
+  if(!path) throw new Error('Indiquez un chemin de fichier dans le dépôt');
+  if(path.includes('..')) throw new Error('Chemin de fichier invalide');
+  const dataUrl = await readFileAsDataURL(file);
+  const base64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+  const body = {
+    path,
+    content: base64,
+    commitMessage: `Upload vidéo ${path}`
+  };
+  const res = await fetch('/api/github-upload-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!res.ok) throw new Error(json.error || 'Échec de l’upload GitHub');
+  return json.fileUrl || json.pagesUrl || json.rawUrl;
+}
+
+uploadVideoRepoBtn.addEventListener('click', async () => {
+  if(!lastVideoFile){ alert('Choisissez un fichier avant d\'uploader.'); return; }
+  try{
+    uploadVideoRepoBtn.disabled = true;
+    uploadVideoRepoBtn.textContent = 'Upload en cours...';
+    const url = await uploadVideoToGitHubRepo(lastVideoFile, videoPathField.value.trim());
+    if(url){
+      videoUrlField.value = url;
+      closeAllPopovers();
+      panelVideo.classList.add('open');
+      videoUrlField.focus();
+      lastVideoFile = null;
+      fileInputVideo.value = '';
+      uploadVideoRepoBtn.disabled = true;
+      importVideoBtn.disabled = true;
+    }
+  }catch(err){
+    console.error(err);
+    alert('Échec de l\'upload vers le dépôt : '+err.message);
+  }finally{
+    uploadVideoRepoBtn.textContent = 'Uploader dans le repo';
+    uploadVideoRepoBtn.disabled = !lastVideoFile;
+  }
 });
 
 async function createMuxUploadSession(){
