@@ -68,9 +68,12 @@ header p{margin:0;color:var(--text-dim);font-size:.82rem;}
 .pop-panel .row > div{flex:1;}
 .pop-panel button.confirm{
   margin-top:10px;width:100%;background:var(--accent);color:#1a1200;border:none;
-  padding:7px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;
+  padding:10px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;min-height:42px;line-height:1.2;
 }
+.pop-panel button.confirm.red{background:#a02222;color:#fff;}
 .pop-panel button.confirm:hover{filter:brightness(1.08);}
+.img-preview-wrapper{display:none;margin:12px auto 0;max-width:calc(100% - 20px);text-align:center;}
+.img-preview-wrapper img{display:block;margin:0 auto;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;}
 
 .canvas{
   background:#2b2e37;
@@ -238,18 +241,22 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       </div>
       <div class="row">
         <div><label>Pourcentage</label><input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50"></div>
-        <div style="display:flex;align-items:flex-end;">
-          <span style="font-size:.75rem;color:var(--text-dim);">Calcule la taille si l'image a été téléversée.</span>
-        </div>
+        <div></div>
       </div>
       <div class="row">
         <div style="flex:1;"><button class="confirm" id="imgConfirm">Insérer l'image</button></div>
-        <div style="flex:1;"><button class="confirm" id="imgCancel" style="background:#a02222;color:#fff;">Annuler</button></div>
+        <div style="flex:1;"><button class="confirm red" id="imgCancel">Annuler</button></div>
       </div>
       <label>Ou téléverser depuis votre ordinateur</label>
-      <div class="row">
-        <div><input type="file" id="imgFile" accept="image/*"></div>
-        <div style="flex:0 0 120px;"><button class="confirm" id="imgUpload">Téléverser</button></div>
+      <div class="row" style="align-items:center;">
+        <div style="flex:1;">
+          <input type="file" id="imgFile" accept="image/*" style="display:none;">
+          <label for="imgFile" class="confirm red" style="width:100%;text-align:center;cursor:pointer;">Choisir un fichier</label>
+        </div>
+        <div style="flex:0 0 120px;"><button class="confirm red" id="imgUpload">Téléverser</button></div>
+      </div>
+      <div id="imgPreviewWrapper" class="img-preview-wrapper" style="display:none;">
+        <img id="imgPreview" alt="Prévisualisation de l'image">
       </div>
       <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;">Téléversement via imgbb (clé locale fournie).</div>
     </div>
@@ -1277,11 +1284,18 @@ async function uploadImageToImgbb(file){
 
 // file input handling: keep selected file, but wait for upload before filling dimensions
 const imgFileInput = document.getElementById('imgFile');
+const imgPreviewWrapper = document.getElementById('imgPreviewWrapper');
+const imgPreview = document.getElementById('imgPreview');
 if(imgFileInput){
   imgFileInput.addEventListener('change', (e)=>{
     const f = e.target.files && e.target.files[0];
     if(f) {
       originalImgSize = null;
+      const reader = new FileReader();
+      reader.onload = ()=>{ updateImagePreview(String(reader.result || '')); };
+      reader.readAsDataURL(f);
+    } else {
+      updateImagePreview('');
     }
   });
 }
@@ -1298,6 +1312,7 @@ if(imgUploadBtn){
         imgUrlField.value = uploadedUrl;
         originalImgSize = null;
         loadImageDimensions(uploadedUrl);
+        updateImagePreview(uploadedUrl);
         // L'URL est remplie automatiquement — cliquez sur "Insérer l'image" pour l'ajouter après ajustements.
       } else {
         alert('Téléversement terminé mais aucune URL retournée.');
@@ -1321,8 +1336,17 @@ if(imgPctField){
 
 // Si l'utilisateur colle / change l'URL manuellement, charge les dimensions
 if(imgUrlField){
-  imgUrlField.addEventListener('change', ()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); });
-  imgUrlField.addEventListener('paste', ()=> setTimeout(()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); }, 50));
+  imgUrlField.addEventListener('change', ()=>{ const v = imgUrlField.value.trim(); if(v){ loadImageDimensions(v); updateImagePreview(v); } else updateImagePreview(''); });
+  imgUrlField.addEventListener('paste', ()=> setTimeout(()=>{ const v = imgUrlField.value.trim(); if(v){ loadImageDimensions(v); updateImagePreview(v); } else updateImagePreview(''); }, 50));
+}
+
+function updateImagePreview(src){
+  if(imgPreview && imgPreviewWrapper && src){
+    imgPreview.src = src;
+    imgPreviewWrapper.style.display = 'block';
+  } else if(imgPreviewWrapper){
+    imgPreviewWrapper.style.display = 'none';
+  }
 }
 
 const imgCancel = document.getElementById('imgCancel');
@@ -1335,6 +1359,7 @@ function clearImagePanel(){
   const imgAlign = document.getElementById('imgAlign');
   if(imgAlign) imgAlign.value = '';
   if(imgFileInput) imgFileInput.value = '';
+  updateImagePreview('');
 }
 if(imgCancel){
   imgCancel.addEventListener('click', (e)=>{
