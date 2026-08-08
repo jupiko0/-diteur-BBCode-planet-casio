@@ -1201,7 +1201,8 @@ fileInputVideo.addEventListener('change', e => {
 });
 
 async function createMuxUploadSession(){
-  const res = await fetch('/api/mux-upload', {
+  const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/mux-upload' : '/api/mux-upload';
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1209,8 +1210,18 @@ async function createMuxUploadSession(){
       cors_origin: window.location.origin
     })
   });
-  const json = await res.json();
-  if(!res.ok) throw new Error((json.error && json.error.message) || JSON.stringify(json));
+
+  const text = await res.text();
+  let json;
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch (err) {
+    throw new Error(`Invalid JSON response from ${apiUrl}: ${text.slice(0, 300)}`);
+  }
+
+  if(!res.ok) {
+    throw new Error((json.error && json.error.message) || `HTTP ${res.status}: ${text}`);
+  }
   return json.data;
 }
 
