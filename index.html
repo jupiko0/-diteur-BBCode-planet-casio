@@ -269,6 +269,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
     <button id="emojiBtn">Emoji ▾</button>
     <div class="emoji-grid" id="emojiGrid"></div>
   </div>
+    <button id="bPhoto">Photo</button>
 </div>
 
 <div class="canvas">
@@ -1066,137 +1067,99 @@ function applyEdit(el, tag){
 </script>
 
 <!-- UI et scripts d'upload sans clé / imgbb -->
-<div style="position:fixed;right:18px;bottom:18px;z-index:120;">
+<div id="photoPanel" style="display:none;position:fixed;right:18px;bottom:18px;z-index:120;">
   <div style="background:var(--panel);border:1px solid var(--line);padding:10px;border-radius:10px;min-width:300px;color:var(--text);">
-    <strong>Mode Photo / Upload (sans clé possible)</strong>
+    <strong>Mode Photo / Importer (imgbb)</strong>
     <div style="margin-top:8px;display:flex;gap:8px;flex-direction:column;">
-      <input type="file" id="fileInputAnon" accept="image/*">
+      <input type="file" id="fileInputPhoto" accept="image/*">
       <div style="display:flex;gap:8px;align-items:center;">
-        <button id="startCamAnon" class="btn-ghost">Activer webcam</button>
-        <button id="captureCamAnon" class="btn-ghost" disabled>Prendre photo</button>
-        <button id="stopCamAnon" class="btn-ghost" disabled>Arrêter</button>
+        <button id="startCamPhoto" class="btn-ghost">Activer webcam</button>
+        <button id="captureCamPhoto" class="btn-ghost" disabled>Prendre photo</button>
+        <button id="stopCamPhoto" class="btn-ghost" disabled>Arrêter</button>
       </div>
-      <div id="camAreaAnon" style="display:none;margin-top:8px;">
-        <video id="videoAnon" autoplay playsinline style="width:100%;border-radius:6px;background:#000;max-height:220px;"></video>
-        <canvas id="canvasAnon" style="display:none;"></canvas>
+      <div id="camAreaPhoto" style="display:none;margin-top:8px;">
+        <video id="videoPhoto" autoplay playsinline style="width:100%;border-radius:6px;background:#000;max-height:220px;"></video>
+        <canvas id="canvasPhoto" style="display:none;"></canvas>
       </div>
-      <label style="font-size:.8rem;color:var(--text-dim);margin-top:6px;">Hébergeur</label>
-      <select id="hostSelAnon" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;">
-        <option value="0x0">0x0.st (sans clé)</option>
-        <option value="catbox">catbox.moe (sans clé)</option>
-        <option value="imgbb">imgbb (clé optionnelle)</option>
-      </select>
-      <label id="imgbbKeyLabelAnon" style="font-size:.8rem;color:var(--text-dim);margin-top:6px;display:none;">Clé API imgbb (collez votre clé)</label>
-      <input type="text" id="imgbbKeyAnon" placeholder="YOUR_IMGBB_API_KEY" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;display:none;">
+      <label id="imgbbKeyLabel" style="font-size:.8rem;color:var(--text-dim);margin-top:6px;display:none;">Clé API imgbb (collez votre clé)</label>
+      <input type="text" id="imgbbKeyPhoto" value="89cdb1f114022cbc5f0dd465a83e83b5" placeholder="YOUR_IMGBB_API_KEY" style="background:var(--bg);border:1px solid var(--line);color:var(--text);padding:6px;border-radius:6px;display:none;">
       <div style="display:flex;gap:8px;">
-        <button id="uploadAnonBtn" class="btn-primary">Uploader</button>
-        <button id="clearPreviewAnon" class="btn-ghost">Effacer</button>
+        <button id="importPhotoBtn" class="btn-primary">Importer</button>
+        <button id="clearPhotoBtn" class="btn-ghost">Effacer</button>
       </div>
-      <div id="resultAnon" style="margin-top:8px;font-size:.85rem;word-break:break-all;color:var(--teal);"></div>
+      <div id="resultPhoto" style="margin-top:8px;font-size:.85rem;word-break:break-all;color:var(--teal);"></div>
     </div>
   </div>
 </div>
 
 <script>
-// Gestion simple upload anonyme (0x0.st et catbox.moe) + imgbb optionnel
-const fileInputAnon = document.getElementById('fileInputAnon');
-const uploadAnonBtn = document.getElementById('uploadAnonBtn');
-const resultAnon = document.getElementById('resultAnon');
-const hostSelAnon = document.getElementById('hostSelAnon');
-const imgbbKeyAnon = document.getElementById('imgbbKeyAnon');
-const imgbbKeyLabelAnon = document.getElementById('imgbbKeyLabelAnon');
-let lastDataUrlAnon = null;
+// Photo panel (imgbb only). Visible via the `Photo` ribbon button.
+const photoPanel = document.getElementById('photoPanel');
+const bPhoto = document.getElementById('bPhoto');
+const fileInputPhoto = document.getElementById('fileInputPhoto');
+const importPhotoBtn = document.getElementById('importPhotoBtn');
+const resultPhoto = document.getElementById('resultPhoto');
+const imgbbKeyPhoto = document.getElementById('imgbbKeyPhoto');
+const imgbbKeyLabel = document.getElementById('imgbbKeyLabel');
+let lastDataUrlPhoto = null;
 
-fileInputAnon.addEventListener('change', async e=>{
+bPhoto.addEventListener('click', ()=>{
+  const willOpen = photoPanel.style.display === 'none';
+  photoPanel.style.display = willOpen ? 'block' : 'none';
+  // montrer le champ clé uniquement quand l'utilisateur ouvre le panneau
+  imgbbKeyPhoto.style.display = willOpen ? 'block' : 'none';
+  imgbbKeyLabel.style.display = willOpen ? 'block' : 'none';
+});
+
+fileInputPhoto.addEventListener('change', async e=>{
   const f = e.target.files && e.target.files[0];
   if(!f) return;
-  lastDataUrlAnon = await new Promise((res,rej)=>{
-    const r = new FileReader(); r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(f);
-  });
-  resultAnon.textContent = 'Image prête.';
+  lastDataUrlPhoto = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+  resultPhoto.textContent = 'Image prête à importer.';
 });
 
-hostSelAnon.addEventListener('change', ()=>{
-  const v = hostSelAnon.value;
-  if(v === 'imgbb'){ imgbbKeyAnon.style.display = 'block'; imgbbKeyLabelAnon.style.display = 'block'; }
-  else { imgbbKeyAnon.style.display = 'none'; imgbbKeyLabelAnon.style.display = 'none'; }
-});
+function dataURLtoBlob(dataurl){ const parts = dataurl.split(','); const m = parts[0].match(/:(.*?);/); const mime = m? m[1] : 'image/png'; const bstr = atob(parts[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new Blob([u8],{type:mime}); }
 
-function dataURLtoBlob(dataurl){
-  const parts = dataurl.split(',');
-  const m = parts[0].match(/:(.*?);/);
-  const mime = m? m[1] : 'image/png';
-  const bstr = atob(parts[1]);
-  let n = bstr.length; const u8 = new Uint8Array(n);
-  while(n--) u8[n] = bstr.charCodeAt(n);
-  return new Blob([u8], {type:mime});
-}
-
-async function uploadTo0x0Anon(dataUrl){
-  const blob = dataURLtoBlob(dataUrl);
-  const form = new FormData(); form.append('file', blob, 'upload.png');
-  resultAnon.textContent = 'Upload vers 0x0.st...';
-  const res = await fetch('https://0x0.st', { method:'POST', body: form });
-  if(!res.ok) throw new Error('Réponse: '+res.status);
-  return (await res.text()).trim();
-}
-
-async function uploadToCatboxAnon(dataUrl){
-  const blob = dataURLtoBlob(dataUrl);
-  const form = new FormData(); form.append('reqtype','fileupload'); form.append('fileToUpload', blob, 'upload.png');
-  resultAnon.textContent = 'Upload vers catbox.moe...';
-  const res = await fetch('https://catbox.moe/user/api.php', { method:'POST', body: form });
-  if(!res.ok) throw new Error('Réponse: '+res.status);
-  return (await res.text()).trim();
-}
-
-async function uploadToImgbbAnon(dataUrl){
-  const key = imgbbKeyAnon.value.trim();
+async function uploadToImgbbPhoto(dataUrl){
+  const key = imgbbKeyPhoto.value.trim();
   if(!key) throw new Error('Clé imgbb non fournie');
   const base64 = dataUrl.replace(/^data:[^;]+;base64,/, '');
   const form = new FormData(); form.append('key', key); form.append('image', base64);
-  resultAnon.textContent = 'Upload vers imgbb...';
+  resultPhoto.textContent = 'Upload en cours...';
   const res = await fetch('https://api.imgbb.com/1/upload', { method:'POST', body: form });
   const j = await res.json();
   if(!j.success) throw new Error((j.error && j.error.message) || 'Echec imgbb');
-  return j.data.display_url || j.data.url || j.data.image && j.data.image.url;
+  return j.data.display_url || j.data.url || (j.data.image && j.data.image.url);
 }
 
-uploadAnonBtn.addEventListener('click', async ()=>{
-  if(!lastDataUrlAnon){ alert('Choisissez une image ou prenez une photo avant d\'uploader.'); return; }
-  const host = hostSelAnon.value;
+importPhotoBtn.addEventListener('click', async ()=>{
+  if(!lastDataUrlPhoto){ alert('Choisissez une image ou prenez une photo avant d\'importer.'); return; }
   try{
-    let url = null;
-    if(host === '0x0'){
-      try{ url = await uploadTo0x0Anon(lastDataUrlAnon); }
-      catch(e){ console.warn('0x0.st failed:', e); url = await uploadToCatboxAnon(lastDataUrlAnon); }
-    } else if(host === 'catbox'){
-      url = await uploadToCatboxAnon(lastDataUrlAnon);
-    } else if(host === 'imgbb'){
-      url = await uploadToImgbbAnon(lastDataUrlAnon);
+    const url = await uploadToImgbbPhoto(lastDataUrlPhoto);
+    if(url){
+      // remplir automatiquement le champ d'insertion d'image et insérer l'image
+      const imgUrlField = document.getElementById('imgUrl');
+      if(imgUrlField){ imgUrlField.value = url; }
+      const img = document.createElement('img'); img.src = url; editor.appendChild(img);
+      resultPhoto.innerHTML = 'Importé : <a href="'+url+'" target="_blank">'+url+'</a>';
+      // fermer le panneau
+      photoPanel.style.display = 'none'; imgbbKeyPhoto.style.display='none'; imgbbKeyLabel.style.display='none';
+      lastDataUrlPhoto = null; fileInputPhoto.value = '';
     }
-    if(url){ resultAnon.innerHTML = 'URL: <a href="'+url+'" target="_blank">'+url+'</a>'; const img=document.createElement('img'); img.src=url; editor.appendChild(img); }
-  }catch(err){
-    console.error(err);
-    resultAnon.textContent = 'Échec de l\'upload (possible blocage CORS). Si échec, utilisez une clé imgbb ou uploadez via un serveur.';
-  }
+  }catch(err){ console.error(err); resultPhoto.textContent = 'Échec de l\'import (CORS ou clé incorrecte) : '+err.message; }
 });
 
-// Webcam (anonyme) — logique identique à la précédente implémentation
-const startCamAnon = document.getElementById('startCamAnon');
-const stopCamAnon = document.getElementById('stopCamAnon');
-const captureCamAnon = document.getElementById('captureCamAnon');
-const videoAnon = document.getElementById('videoAnon');
-const canvasAnon = document.getElementById('canvasAnon');
-const camAreaAnon = document.getElementById('camAreaAnon');
-let streamAnon = null;
-startCamAnon.addEventListener('click', async ()=>{
-  try{ streamAnon = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); videoAnon.srcObject = streamAnon; camAreaAnon.style.display='block'; captureCamAnon.disabled=false; stopCamAnon.disabled=false; startCamAnon.disabled=true; }
-  catch(e){ alert('Impossible d\'accéder à la webcam : '+e.message); }
-});
-stopCamAnon.addEventListener('click', ()=>{ if(streamAnon){ streamAnon.getTracks().forEach(t=>t.stop()); streamAnon=null; } videoAnon.srcObject=null; camAreaAnon.style.display='none'; captureCamAnon.disabled=true; stopCamAnon.disabled=true; startCamAnon.disabled=false; });
-captureCamAnon.addEventListener('click', ()=>{ const w=videoAnon.videoWidth,h=videoAnon.videoHeight; canvasAnon.width=w; canvasAnon.height=h; const ctx=canvasAnon.getContext('2d'); ctx.drawImage(videoAnon,0,0,w,h); lastDataUrlAnon = canvasAnon.toDataURL('image/png'); resultAnon.textContent = 'Photo capturée.'; });
-
+// Webcam handlers (photo)
+const startCamPhoto = document.getElementById('startCamPhoto');
+const stopCamPhoto = document.getElementById('stopCamPhoto');
+const captureCamPhoto = document.getElementById('captureCamPhoto');
+const videoPhoto = document.getElementById('videoPhoto');
+const canvasPhoto = document.getElementById('canvasPhoto');
+const camAreaPhoto = document.getElementById('camAreaPhoto');
+let streamPhoto = null;
+startCamPhoto.addEventListener('click', async ()=>{ try{ streamPhoto = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); videoPhoto.srcObject = streamPhoto; camAreaPhoto.style.display='block'; captureCamPhoto.disabled=false; stopCamPhoto.disabled=false; startCamPhoto.disabled=true; }catch(e){ alert('Impossible d\'accéder à la webcam : '+e.message); } });
+stopCamPhoto.addEventListener('click', ()=>{ if(streamPhoto){ streamPhoto.getTracks().forEach(t=>t.stop()); streamPhoto=null; } videoPhoto.srcObject=null; camAreaPhoto.style.display='none'; captureCamPhoto.disabled=true; stopCamPhoto.disabled=true; startCamPhoto.disabled=false; });
+captureCamPhoto.addEventListener('click', ()=>{ const w=videoPhoto.videoWidth,h=videoPhoto.videoHeight; canvasPhoto.width=w; canvasPhoto.height=h; const ctx=canvasPhoto.getContext('2d'); ctx.drawImage(videoPhoto,0,0,w,h); lastDataUrlPhoto = canvasPhoto.toDataURL('image/png'); resultPhoto.textContent = 'Photo capturée.'; });
 </script>
 </body>
 
