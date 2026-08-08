@@ -322,7 +322,6 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
     <button id="emojiBtn">Emoji ▾</button>
       <div class="pop-panel" id="panelEmoji">
         <div class="emoji-grid" id="emojiGrid"></div>
-        <div class="emoji-codes" id="emojiCodes"></div>
       </div>
   </div>
 </div>
@@ -835,16 +834,12 @@ function buildEmojiGrid(){
       b.textContent = val; b.style.fontSize = '18px';
     }
     b.addEventListener('click', ()=>{
-      if(isUrl(val)) insertHTMLAtCursor(` <img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}" contenteditable="false"> `);
+      if(isUrl(val)) insertHTMLAtCursor(` <img src="${val}" style="vertical-align:middle;" data-emoji-code="${code||''}" contenteditable="false"> `);
       else insertHTMLAtCursor(` ${val} `);
       closeAllPopovers();
     });
     emojiGrid.appendChild(b);
   });
-  const codesEl = document.getElementById('emojiCodes');
-  if(codesEl){
-    codesEl.textContent = EMOJIS.map(([code])=>code).join(' ');
-  }
 }
 
 // Emoji popover toggle
