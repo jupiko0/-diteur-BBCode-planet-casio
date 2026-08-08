@@ -98,6 +98,18 @@ header p{margin:0;color:var(--text-dim);font-size:.82rem;}
   padding:10px 12px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;
   white-space:pre-wrap;
 }
+#editor .bb-code code{display:block;white-space:pre;}
+#editor .bb-code .token-comment{color:#6a9955;}
+#editor .bb-code .token-keyword{color:#c586c0;}
+#editor .bb-code .token-type{color:#4ec9b0;}
+#editor .bb-code .token-string{color:#ce9178;}
+#editor .bb-code .token-number{color:#b5cea8;}
+#editor .bb-code .token-tag{color:#569cd6;}
+#editor .bb-code .token-attr-name{color:#9cdcfe;}
+#editor .bb-code .token-attr-value{color:#ce9178;}
+#editor .bb-code .token-punctuation{color:#d4d4d4;}
+#editor .bb-code .token-variable{color:#9cdcfe;}
+.pop-panel textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:8px;border-radius:6px;font-family:var(--mono);font-size:.8rem;resize:vertical;min-height:120px;margin-top:4px;}
 #editor .bb-spoiler-block{border:1px solid #a02222;border-radius:6px;margin:10px 0;overflow:hidden;}
 #editor .bb-spoiler-label{background:#a02222;color:#fff;font-weight:700;font-size:.8rem;padding:6px 12px;}
 #editor .bb-spoiler-body{padding:10px 12px;}
@@ -227,10 +239,13 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <div class="row">
         <div><label>Pourcentage</label><input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50"></div>
         <div style="display:flex;align-items:flex-end;">
-          <span style="font-size:.75rem;color:var(--text-dim);">Utilise la taille originale pour calculer le ratio.</span>
+          <span style="font-size:.75rem;color:var(--text-dim);">Calcule la taille si l'image a été téléversée.</span>
         </div>
       </div>
-      <button class="confirm" id="imgConfirm">Insérer l'image</button>
+      <div class="row">
+        <div style="flex:1;"><button class="confirm" id="imgConfirm">Insérer l'image</button></div>
+        <div style="flex:1;"><button class="confirm" id="imgCancel" style="background:#a02222;color:#fff;">Annuler</button></div>
+      </div>
       <label>Ou téléverser depuis votre ordinateur</label>
       <div class="row">
         <div><input type="file" id="imgFile" accept="image/*"></div>
@@ -255,7 +270,24 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <button class="confirm" id="profilConfirm">Insérer le profil</button>
     </div>
   </div>
-  <button id="bCode">Code</button>
+  <div class="pop-wrap">
+    <button id="bCode">Code</button>
+    <div class="pop-panel" id="panelCode">
+      <label>Langage</label>
+      <select id="codeLang">
+        <option value="">Aucun / brut</option>
+        <option value="c">C</option>
+        <option value="h">H</option>
+        <option value="python">Python</option>
+        <option value="pl">Perl</option>
+        <option value="html">HTML</option>
+        <option value="bash">Bash</option>
+      </select>
+      <label>Code</label>
+      <textarea id="codeText" placeholder="Coller votre code ici"></textarea>
+      <button class="confirm" id="codeConfirm">Insérer le code</button>
+    </div>
+  </div>
   <button id="bQuote">Citation</button>
   <div class="pop-wrap">
     <button id="bSpoiler">Spoiler</button>
@@ -702,10 +734,66 @@ document.getElementById('progConfirm').addEventListener('click', ()=>{
   closeAllPopovers();
 });
 
-document.getElementById('bCode').addEventListener('click', ()=>{
-  restoreSelection();
-  const content = hasSelection() ? (window.getSelection().toString()) : 'votre code ici';
-  insertHTMLAtCursor(`<pre class="bb-code"><code contenteditable="true">${content.replace(/</g,'&lt;')}</code></pre><div><br></div>`);
+const panelCode = document.getElementById('panelCode');
+if(panelCode){
+  togglePopover(document.getElementById('bCode'), panelCode);
+}
+const codeLang = document.getElementById('codeLang');
+const codeText = document.getElementById('codeText');
+function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlightCode(lang, code){
+  const escaped = escapeHtml(code);
+  const strings = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+  const numbers = /\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b/g;
+  let highlighted = escaped;
+  if(lang === 'html'){
+    highlighted = highlighted.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
+    highlighted = highlighted.replace(/(&lt;\/)?([a-zA-Z][a-zA-Z0-9:-]*)([^&]*?)(\/?)&gt;/g, (m,close,tag,attrs,slash)=>{
+      let result = `${close || ''}<span class="token-tag">${tag}</span>`;
+      if(attrs){
+        result += attrs.replace(/([a-zA-Z-:]+)(\s*=\s*)("[^"]*"|'[^']*')?/g, (mm,name,eq,value)=>{
+          let out = `<span class="token-attr-name">${name}</span>`;
+          if(eq) out += eq;
+          if(value) out += `<span class="token-attr-value">${value}</span>`;
+          return out;
+        });
+      }
+      return `&lt;${result}${slash||''}&gt;`;
+    });
+    return highlighted;
+  }
+  if(lang === 'bash' || lang === 'python' || lang === 'pl'){
+    highlighted = highlighted.replace(/(#.*)$/gm, '<span class="token-comment">$1</span>');
+    highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
+    highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
+    highlighted = highlighted.replace(/\$(?:[A-Za-z_][A-Za-z0-9_]*)/g, '<span class="token-variable">$&</span>');
+    highlighted = highlighted.replace(/\b(?:def|class|import|from|as|return|if|elif|else|for|while|try|except|finally|with|print|in|and|or|not|is|None|True|False|pass|break|continue|lambda|self|sub|use|my|package|elsif|unless|echo|fi|then|do|done|function|case|esac|shift|export)\b/g, '<span class="token-keyword">$&</span>');
+    return highlighted;
+  }
+  if(lang === 'c' || lang === 'h'){
+    highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/|\/\/.*$)/gm, '<span class="token-comment">$1</span>');
+    highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
+    highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
+    highlighted = highlighted.replace(/\b(?:int|char|short|long|float|double|void|unsigned|signed|const|static|struct|union|enum|typedef|return|if|else|for|while|do|switch|case|break|continue|sizeof|volatile|register|extern|goto)\b/g, '<span class="token-keyword">$&</span>');
+    highlighted = highlighted.replace(/\b(?:int|char|short|long|float|double|void)\b/g, '<span class="token-type">$&</span>');
+    return highlighted;
+  }
+  highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
+  highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
+  highlighted = highlighted.replace(/\b(?:function|var|let|const|return|if|else|for|while|switch|case|break|continue|import|from|export|class|new|try|catch|finally|throw)\b/g, '<span class="token-keyword">$&</span>');
+  return highlighted;
+}
+
+document.getElementById('codeConfirm').addEventListener('click', ()=>{
+  const lang = codeLang ? codeLang.value : '';
+  const content = codeText ? codeText.value.trim() : '';
+  if(!content) return;
+  const highlighted = highlightCode(lang, content);
+  const langClass = lang ? ` language-${lang}` : '';
+  insertHTMLAtCursor(`<pre class="bb-code${langClass}"><code contenteditable="true">${highlighted}</code></pre><div><br></div>`);
+  if(codeText) codeText.value = '';
+  if(codeLang) codeLang.value = '';
+  closeAllPopovers();
 });
 
 document.getElementById('bQuote').addEventListener('click', ()=>{
@@ -817,7 +905,12 @@ function nodeToBBCode(node){
       return `[video]${srcv}[/video]`;
     }
     case 'PRE': {
-      if(node.classList.contains('bb-code')) return `[code]${node.textContent}[/code]\n`;
+      if(node.classList.contains('bb-code')){
+        const langMatch = node.className.match(/language-([a-zA-Z0-9_-]+)/);
+        const lang = langMatch ? langMatch[1] : '';
+        const text = node.textContent.replace(/\r/g,'');
+        return lang ? `[code=${lang}]${text}[/code]\n` : `[code]${text}[/code]\n`;
+      }
       return childrenBB;
     }
     case 'BLOCKQUOTE': {
@@ -947,9 +1040,11 @@ function bbcodeToHTML(raw){
   const blocks = [];
   function stash(html){ const token = '\u0001B'+blocks.length+'\u0001'; blocks.push(html); return token; }
 
-  text = text.replace(/\[code\]([\s\S]*?)\[\/code\]/gi, (m,c)=>
-    stash(`<pre class="bb-code"><code contenteditable="true">${c}</code></pre>`)
-  );
+  text = text.replace(/\[code(?:=([a-zA-Z0-9_-]+))?\]([\s\S]*?)\[\/code\]/gi, (m,lang,c)=>{
+    const langClass = lang ? ` language-${lang}` : '';
+    const codeValue = c.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return stash(`<pre class="bb-code${langClass}"><code contenteditable="true">${codeValue}</code></pre>`);
+  });
 
   text = text.replace(/\[quote(?:=([^\]]*))?\]([\s\S]*?)\[\/quote\]/gi, (m,author,content)=>{
     const body = parseInlineBBCode(content).replace(/\n/g,'<br>');
@@ -1149,8 +1244,8 @@ const imgPctField = document.getElementById('imgPct');
 const imgWField = document.getElementById('imgW');
 const imgHField = document.getElementById('imgH');
 const imgUrlField = document.getElementById('imgUrl');
+const imgCancelBtn = document.getElementById('imgCancel');
 const videoUrlField = document.getElementById('videoUrl');
-// image import disabled
 let originalImgSize = null;
 
 // imgbb configuration (clé fournie par l'utilisateur)
@@ -1180,15 +1275,13 @@ async function uploadImageToImgbb(file){
   return j.data.url || j.data.display_url || j.data.image?.url;
 }
 
-// file input handling: preview dimensions from file and upload handler
+// file input handling: keep selected file, but wait for upload before filling dimensions
 const imgFileInput = document.getElementById('imgFile');
 if(imgFileInput){
   imgFileInput.addEventListener('change', (e)=>{
     const f = e.target.files && e.target.files[0];
     if(f) {
-      const reader = new FileReader();
-      reader.onload = ()=>{ loadFileDimensions(String(reader.result || '')); };
-      reader.readAsDataURL(f);
+      originalImgSize = null;
     }
   });
 }
@@ -1203,6 +1296,7 @@ if(imgUploadBtn){
       const uploadedUrl = await uploadImageToImgbb(f);
       if(uploadedUrl){
         imgUrlField.value = uploadedUrl;
+        originalImgSize = null;
         loadImageDimensions(uploadedUrl);
         // L'URL est remplie automatiquement — cliquez sur "Insérer l'image" pour l'ajouter après ajustements.
       } else {
@@ -1229,6 +1323,24 @@ if(imgPctField){
 if(imgUrlField){
   imgUrlField.addEventListener('change', ()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); });
   imgUrlField.addEventListener('paste', ()=> setTimeout(()=>{ const v = imgUrlField.value.trim(); if(v) loadImageDimensions(v); }, 50));
+}
+
+const imgCancel = document.getElementById('imgCancel');
+function clearImagePanel(){
+  originalImgSize = null;
+  if(imgUrlField) imgUrlField.value = '';
+  if(imgWField) imgWField.value = '';
+  if(imgHField) imgHField.value = '';
+  if(imgPctField) imgPctField.value = '';
+  const imgAlign = document.getElementById('imgAlign');
+  if(imgAlign) imgAlign.value = '';
+  if(imgFileInput) imgFileInput.value = '';
+}
+if(imgCancel){
+  imgCancel.addEventListener('click', (e)=>{
+    e.preventDefault();
+    clearImagePanel();
+  });
 }
 
 function setOriginalImageSize(width, height){
