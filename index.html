@@ -479,13 +479,19 @@ function setActive(id, on){
   document.getElementById(id).classList.toggle('active', !!on);
 }
 
+function getCurrentAlignment(){
+  const block = getBlockAncestor(window.getSelection().anchorNode);
+  return block ? block.style.textAlign : '';
+}
+
 function updateToolbarState(){
   setActive('bBold', isCmdActive('bold'));
   setActive('bItalic', isCmdActive('italic'));
   setActive('bUnderline', isCmdActive('underline'));
   setActive('bStrike', isCmdActive('strikeThrough'));
-  setActive('bCenter', isCmdActive('justifyCenter'));
-  setActive('bJustify', isCmdActive('justifyFull'));
+  const align = getCurrentAlignment();
+  setActive('bCenter', isCmdActive('justifyCenter') || align === 'center');
+  setActive('bJustify', isCmdActive('justifyFull') || align === 'justify');
   setActive('bSmall', !!closestInSelection('small'));
   setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
@@ -510,6 +516,9 @@ function toggleAlign(align){
   updateCount();
   updateToolbarState();
 }
+const ribbonButtons = document.querySelectorAll('.ribbon button');
+ribbonButtons.forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
+
 document.getElementById('bBold').addEventListener('click', ()=> cmd('bold'));
 document.getElementById('bItalic').addEventListener('click', ()=> cmd('italic'));
 document.getElementById('bUnderline').addEventListener('click', ()=> cmd('underline'));
