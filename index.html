@@ -247,6 +247,14 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <label>Adresse de la vidéo</label>
       <input type="text" id="videoUrl" placeholder="https://...">
       <button class="confirm" id="videoConfirm">Insérer la vidéo</button>
+      <div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">
+        <label style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--text-dim);">Importer depuis fichier</label>
+        <input type="file" id="fileInputVideo" accept="video/*">
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="importVideoBtn" class="btn-primary" disabled>Importer</button>
+        </div>
+        <input type="hidden" id="muxKeyVideo" value="k50vlc97o1tehe2rmfv6ob44p">
+      </div>
     </div>
   </div>
   <div class="pop-wrap">
@@ -1095,8 +1103,13 @@ const imgPctField = document.getElementById('imgPct');
 const imgWField = document.getElementById('imgW');
 const imgHField = document.getElementById('imgH');
 const imgUrlField = document.getElementById('imgUrl');
+const fileInputVideo = document.getElementById('fileInputVideo');
+const importVideoBtn = document.getElementById('importVideoBtn');
+const muxKeyVideo = document.getElementById('muxKeyVideo');
+const videoUrlField = document.getElementById('videoUrl');
 let lastDataUrlPhoto = null;
 let originalImgSize = null;
+let lastVideoFile = null;
 
 function setOriginalImageSize(width, height){
   originalImgSize = { width, height };
@@ -1181,6 +1194,67 @@ importPhotoBtn.addEventListener('click', async ()=>{
       importPhotoBtn.disabled = true;
     }
   }catch(err){ console.error(err); alert('Échec de l\'import : '+err.message); }
+});
+
+fileInputVideo.addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  lastVideoFile = f || null;
+  importVideoBtn.disabled = !f;
+});
+
+async function createMuxUploadSession(){
+  const key = muxKeyVideo.value.trim();
+  if(!key) throw new Error('Clé Mux non fournie');
+  const res = await fetch('https://upload.mux.com/v1/uploads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      new_asset_settings: { playback_policy: 'public' },
+      cors_origin: window.location.origin
+    })
+  });
+  const json = await res.json();
+  if(!res.ok) throw new Error((json.error && json.error.message) || JSON.stringify(json));
+  return json.data;
+}
+
+async function uploadToMuxVideo(file){
+  const session = await createMuxUploadSession();
+  if(!session || !session.url) throw new Error('Impossible de créer la session de chargement Mux');
+  const uploadRes = await fetch(session.url, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file
+  });
+  if(!uploadRes.ok) throw new Error(`Échec du transfert vers Mux (${uploadRes.status})`);
+  const playbackId = session.asset?.playback_ids?.[0]?.id;
+  if(playbackId) return `https://stream.mux.com/${playbackId}.m3u8`;
+  if(session.asset?.id) return `https://stream.mux.com/${session.asset.id}.m3u8`;
+  return session.url;
+}
+
+importVideoBtn.addEventListener('click', async () => {
+  if(!lastVideoFile){ alert('Choisissez un fichier avant d\'importer.'); return; }
+  try{
+    importVideoBtn.disabled = true;
+    importVideoBtn.textContent = 'Importation...';
+    const url = await uploadToMuxVideo(lastVideoFile);
+    if(url){
+      videoUrlField.value = url;
+      closeAllPopovers();
+      panelVideo.classList.add('open');
+      videoUrlField.focus();
+      lastVideoFile = null;
+      fileInputVideo.value = '';
+    }
+  }catch(err){ console.error(err); alert('Échec de l\'import vidéo : '+err.message); }
+  finally{
+    importVideoBtn.textContent = 'Importer';
+    importVideoBtn.disabled = !lastVideoFile;
+  }
 });
 </script>
 </body>
