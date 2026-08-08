@@ -484,10 +484,8 @@ function updateToolbarState(){
   setActive('bItalic', isCmdActive('italic'));
   setActive('bUnderline', isCmdActive('underline'));
   setActive('bStrike', isCmdActive('strikeThrough'));
-  const block = getBlockAncestor(window.getSelection().anchorNode);
-  const align = block ? block.style.textAlign : '';
-  setActive('bCenter', align === 'center');
-  setActive('bJustify', align === 'justify');
+  setActive('bCenter', isCmdActive('justifyCenter'));
+  setActive('bJustify', isCmdActive('justifyFull'));
   setActive('bSmall', !!closestInSelection('small'));
   setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
@@ -506,11 +504,8 @@ function cmd(command, value){
    cachette" un alignement ailleurs dans la page). */
 function toggleAlign(align){
   restoreSelection();
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return;
-  const block = getBlockAncestor(sel.anchorNode);
-  if(!block) return;
-  block.style.textAlign = (block.style.textAlign === align) ? '' : align;
+  const cmd = align === 'center' ? 'justifyCenter' : 'justifyFull';
+  document.execCommand(cmd, false, null);
   saveSelection();
   updateCount();
   updateToolbarState();
