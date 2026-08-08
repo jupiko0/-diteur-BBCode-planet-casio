@@ -240,8 +240,10 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
         <div><label>Hauteur (px)</label><input type="number" id="imgH" placeholder="ex: 150"></div>
       </div>
       <div class="row">
-        <div><label>Pourcentage</label><input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50"></div>
-        <div></div>
+        <div style="flex:1;">
+          <label>Pourcentage</label>
+          <input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50">
+        </div>
       </div>
       <div class="row">
         <div style="flex:1;"><button class="confirm" id="imgConfirm">Insérer l'image</button></div>
@@ -258,7 +260,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
       <div id="imgPreviewWrapper" class="img-preview-wrapper" style="display:none;">
         <img id="imgPreview" alt="Prévisualisation de l'image">
       </div>
-      <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;">Téléversement via imgbb (clé locale fournie).</div>
+      <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;text-align:center;">Téléversement via imgbb.</div>
     </div>
   </div>
   <div class="pop-wrap">
