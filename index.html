@@ -384,25 +384,42 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 /* ---------- Émojis (tableau par défaut, charges depuis le dépôt GitHub si voulu) ---------- */
 const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
 const GITHUB_EMOJI_FILES = [
+  ':).gif',
+  ';).gif',
+  ':D.gif',
+  ':p.gif',
+  ':lol:.gif',
+  '8-).gif',
+  ':(.gif',
+  ':@.gif',
+  '0_0.gif',
+  ':oops:.gif',
+  ':grr:.gif',
   ':E.gif',
-  ':P.gif',
-  ':LOL.gif',
-  // remplace ces noms par tes fichiers GitHub réels
-  // exemple si ton repo contient :E.gif alors le BBCode sera :E
+  ':O.gif',
+  ':sry:.gif',
+  ':mmm:.gif',
+  ':waza:.gif',
+  ':\'(.gif',
+  ':here:.gif',
+  '^^.gif',
+  '>:).gif',
+  ':bow:.gif',
+  ':cool:.gif',
+  ':good:.gif',
+  ':omg:.gif',
+  ':fusil:.gif',
+  ':aie:.gif',
+  ':argh:.gif',
+  ':mdr:.gif',
+  ':boulet2:.gif',
+  ':thx:.gif',
+  ':champ:.gif',
+  ':bounce:.gif'
 ];
 const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
   name.replace(/\.gif$/i,''),
   GITHUB_EMOJI_BASE + encodeURIComponent(name)
-]).concat([
-  [':bounce:','🤸'], [':boulet2:','🤦'], [':whistle:','😗'], [':champ:','🏆'],
-  [':fusil:','🔫'], [':argh:','😤'], [':thx:','🙏'], [':oops:','😅'],
-  [':omg:','😱'], [':love:','😍'], [':good:','👍'], [':cool:','😎'],
-  [':bow:','🙇'], [':here:','👉'], [':mmm:','🤔'], [':waza:','🤪'],
-  [':sry:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':grr:','😡'], [":'(",'😢'], [':aie:','😖'],
-  [':lol:','😂'], ['>:)', '😈'], ['0_0','😳'], ['8-)','😎'],
-  ['^^','😊'], [':D','😀'], [':p','😛'], [':O','😮'],
-  [':E','😬'], [':@','😠'], [':(','🙁'], [':)','🙂'],
-  [';)', '😉']
 ]);
 function loadEmojis(){
   try{ const raw = localStorage.getItem('emoji_list'); return raw ? JSON.parse(raw) : DEFAULT_EMOJIS.slice(); }catch(e){ return DEFAULT_EMOJIS.slice(); }
