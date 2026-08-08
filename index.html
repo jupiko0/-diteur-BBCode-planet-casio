@@ -500,23 +500,13 @@ function setActive(id, on){
   document.getElementById(id).classList.toggle('active', !!on);
 }
 
-function getCurrentAlignment(){
-  const block = getBlockAncestor(window.getSelection().anchorNode);
-  if(block){
-    const align = window.getComputedStyle(block).textAlign;
-    if(align === 'center' || align === 'justify') return align;
-  }
-  return '';
-}
-
 function updateToolbarState(){
   setActive('bBold', isCmdActive('bold'));
   setActive('bItalic', isCmdActive('italic'));
   setActive('bUnderline', isCmdActive('underline'));
   setActive('bStrike', isCmdActive('strikeThrough'));
-  const align = getCurrentAlignment();
-  setActive('bCenter', align === 'center');
-  setActive('bJustify', align === 'justify');
+  setActive('bCenter', isCmdActive('justifyCenter'));
+  setActive('bJustify', isCmdActive('justifyFull'));
   setActive('bSmall', !!closestInSelection('small'));
   setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
@@ -529,17 +519,9 @@ function cmd(command, value){
   updateToolbarState();
 }
 
-/* Centrer / Justifier : on applique directement le style au bloc courant. */
 function toggleAlign(align){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return;
-  const block = getBlockAncestor(sel.anchorNode);
-  if(!block) return;
-  const currentAlign = window.getComputedStyle(block).textAlign;
-  const target = currentAlign === align ? '' : align;
-  block.style.textAlign = target;
-  updateCount();
-  updateToolbarState();
+  const cmdName = align === 'center' ? 'justifyCenter' : 'justifyFull';
+  cmd(cmdName);
 }
 const ribbonButtons = document.querySelectorAll('.ribbon button');
 ribbonButtons.forEach(btn => {
