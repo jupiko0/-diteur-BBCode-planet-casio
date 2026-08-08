@@ -1201,15 +1201,27 @@ fileInputVideo.addEventListener('change', e => {
 });
 
 async function createMuxUploadSession(){
-  const apiUrl = window.location.protocol === 'file:' ? 'http://localhost:3000/api/mux-upload' : '/api/mux-upload';
-  const res = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      new_asset_settings: { playback_policy: 'public' },
-      cors_origin: window.location.origin
-    })
+  const localApiUrl = 'http://localhost:3000/api/mux-upload';
+  const remoteApiUrl = '/api/mux-upload';
+  const bodyJson = JSON.stringify({
+    new_asset_settings: { playback_policy: 'public' },
+    cors_origin: window.location.origin
   });
+
+  let res;
+  try {
+    res = await fetch(localApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: bodyJson
+    });
+  } catch (err) {
+    res = await fetch(remoteApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: bodyJson
+    });
+  }
 
   const text = await res.text();
   let json;
