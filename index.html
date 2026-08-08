@@ -253,7 +253,6 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button id="importVideoBtn" class="btn-primary" disabled>Importer</button>
         </div>
-        <input type="hidden" id="muxKeyVideo" value="k50vlc97o1tehe2rmfv6ob44p">
       </div>
     </div>
   </div>
@@ -1105,7 +1104,6 @@ const imgHField = document.getElementById('imgH');
 const imgUrlField = document.getElementById('imgUrl');
 const fileInputVideo = document.getElementById('fileInputVideo');
 const importVideoBtn = document.getElementById('importVideoBtn');
-const muxKeyVideo = document.getElementById('muxKeyVideo');
 const videoUrlField = document.getElementById('videoUrl');
 let lastDataUrlPhoto = null;
 let originalImgSize = null;
@@ -1203,14 +1201,9 @@ fileInputVideo.addEventListener('change', e => {
 });
 
 async function createMuxUploadSession(){
-  const key = muxKeyVideo.value.trim();
-  if(!key) throw new Error('Clé Mux non fournie');
-  const res = await fetch('https://upload.mux.com/v1/uploads', {
+  const res = await fetch('/api/mux-upload', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       new_asset_settings: { playback_policy: 'public' },
       cors_origin: window.location.origin
