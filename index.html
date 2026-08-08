@@ -454,8 +454,8 @@ function closestInSelection(selector){
   const sel = window.getSelection();
   if(!sel.rangeCount) return null;
   const range = sel.getRangeAt(0);
-  const nodes = [range.startContainer, range.endContainer];
-  for(const rawNode of nodes){
+  const anchors = [range.startContainer, range.endContainer];
+  for(const rawNode of anchors){
     let node = rawNode;
     if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
     if(node && editor.contains(node)){
@@ -466,31 +466,12 @@ function closestInSelection(selector){
   return null;
 }
 
-function getSelectionRoot(){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return null;
-  let node = sel.anchorNode;
-  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-  return (node && editor.contains(node)) ? node : null;
-}
-
-function isAncestorWithFontSize(node){
+function nodeHasSelector(node, selector){
   while(node && node !== editor){
-    if(node.nodeType === Node.ELEMENT_NODE){
-      const style = node.getAttribute('style') || '';
-      if(/font-size\s*:\s*[^;]+/.test(style)) return true;
-      const computed = window.getComputedStyle(node).fontSize;
-      if(parseFloat(computed) > 18) return true;
-    }
+    if(node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) return true;
     node = node.parentElement;
   }
   return false;
-}
-
-function unwrapElement(el){
-  const parent = el.parentNode;
-  while(el.firstChild) parent.insertBefore(el.firstChild, el);
-  parent.removeChild(el);
 }
 
 function getBlockAncestor(node){
@@ -507,31 +488,6 @@ function setActive(id, on){
   document.getElementById(id).classList.toggle('active', !!on);
 }
 
-function elementOrAncestorMatches(node, selector){
-  while(node && node !== editor){
-    if(node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) return true;
-    node = node.parentElement;
-  }
-  return false;
-}
-
-function isTextStyleActive(tagSelectors, styleCheck){
-  const root = getSelectionRoot();
-  if(!root) return false;
-  let node = root;
-  while(node && node !== editor){
-    if(node.nodeType === Node.ELEMENT_NODE){
-      if(tagSelectors.some(sel => node.matches(sel))) return true;
-      if(styleCheck){
-        const style = window.getComputedStyle(node);
-        if(styleCheck(style)) return true;
-      }
-    }
-    node = node.parentElement;
-  }
-  return false;
-}
-
 function getCurrentAlignment(){
   const block = getBlockAncestor(window.getSelection().anchorNode);
   if(block){
@@ -542,20 +498,19 @@ function getCurrentAlignment(){
 }
 
 function updateToolbarState(){
-  setActive('bBold', isCmdActive('bold') || isTextStyleActive(['b','strong'], style => parseInt(style.fontWeight, 10) >= 600));
-  setActive('bItalic', isCmdActive('italic') || isTextStyleActive(['i','em'], style => style.fontStyle === 'italic'));
-  setActive('bUnderline', isCmdActive('underline') || isTextStyleActive(['u'], style => style.textDecorationLine.includes('underline')));
-  setActive('bStrike', isCmdActive('strikeThrough') || isTextStyleActive(['s','strike','del'], style => style.textDecorationLine.includes('line-through')));
+  setActive('bBold', isCmdActive('bold'));
+  setActive('bItalic', isCmdActive('italic'));
+  setActive('bUnderline', isCmdActive('underline'));
+  setActive('bStrike', isCmdActive('strikeThrough'));
   const align = getCurrentAlignment();
   setActive('bCenter', isCmdActive('justifyCenter') || align === 'center');
   setActive('bJustify', isCmdActive('justifyFull') || align === 'justify');
-  setActive('bSmall', !!closestInSelection('small') || isTextStyleActive(['small'], () => false));
-  setActive('bBig', !!closestInSelection('span[style*="font-size"]') || isAncestorWithFontSize(getSelectionRoot()));
+  setActive('bSmall', !!closestInSelection('small'));
+  setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
 
 /* ---------- Boutons de mise en forme native ---------- */
 function cmd(command, value){
-  restoreSelection();
   document.execCommand(command, false, value || null);
   saveSelection();
   updateCount();
@@ -566,7 +521,6 @@ function cmd(command, value){
    execCommand (qui pouvait s'appliquer au mauvais élément et "activer en
    cachette" un alignement ailleurs dans la page). */
 function toggleAlign(align){
-  restoreSelection();
   const cmd = align === 'center' ? 'justifyCenter' : 'justifyFull';
   document.execCommand(cmd, false, null);
   saveSelection();
@@ -646,7 +600,6 @@ function wrapTag(openTag, closeTag){
   document.execCommand('insertHTML', false, openTag+html+closeTag);
 }
 document.getElementById('bSmall').addEventListener('click', ()=>{
-  restoreSelection();
   const existing = closestInSelection('small');
   if(existing){ unwrapElement(existing); }
   else if(hasSelection()){ wrapTag('<small>','</small>'); }
@@ -655,7 +608,6 @@ document.getElementById('bSmall').addEventListener('click', ()=>{
   updateToolbarState();
 });
 document.getElementById('bBig').addEventListener('click', ()=>{
-  restoreSelection();
   const existing = closestInSelection('span[style*="font-size"]');
   if(existing){ unwrapElement(existing); }
   else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
