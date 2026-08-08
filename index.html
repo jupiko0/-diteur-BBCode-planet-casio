@@ -224,6 +224,12 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
         <div><label>Largeur (px)</label><input type="number" id="imgW" placeholder="ex: 200"></div>
         <div><label>Hauteur (px)</label><input type="number" id="imgH" placeholder="ex: 150"></div>
       </div>
+      <div class="row">
+        <div><label>Pourcentage</label><input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50"></div>
+        <div style="display:flex;align-items:flex-end;">
+          <span style="font-size:.75rem;color:var(--text-dim);">Utilise la taille originale pour calculer le ratio.</span>
+        </div>
+      </div>
       <button class="confirm" id="imgConfirm">Insérer l'image</button>
       <div style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">
         <label style="font-size:.85rem;margin-bottom:6px;display:block;color:var(--text-dim);">Importer depuis fichier</label>
@@ -596,8 +602,14 @@ document.getElementById('imgConfirm').addEventListener('click', ()=>{
   const url = document.getElementById('imgUrl').value.trim();
   if(!url) return;
   const align = document.getElementById('imgAlign').value;
-  const w = document.getElementById('imgW').value.trim();
-  const h = document.getElementById('imgH').value.trim();
+  let w = document.getElementById('imgW').value.trim();
+  let h = document.getElementById('imgH').value.trim();
+  const pct = parseFloat(document.getElementById('imgPct').value);
+  if((!w || !h) && originalImgSize){
+    const ratio = pct > 0 ? pct / 100 : 1;
+    if(!w) w = Math.round(originalImgSize.width * ratio);
+    if(!h) h = Math.round(originalImgSize.height * ratio);
+  }
   let optsParts = [];
   if(w && h) optsParts.push(`${w}x${h}`);
   if(align) optsParts.push(align);
@@ -611,6 +623,7 @@ document.getElementById('imgConfirm').addEventListener('click', ()=>{
   insertHTMLAtCursor(`<img src="${url}" style="${style}"${dataOpts}>`);
   document.getElementById('imgUrl').value=''; document.getElementById('imgAlign').value='';
   document.getElementById('imgW').value=''; document.getElementById('imgH').value='';
+  document.getElementById('imgPct').value='';
   closeAllPopovers();
 });
 
@@ -1078,14 +1091,68 @@ function applyEdit(el, tag){
 const fileInputPhoto = document.getElementById('fileInputPhoto');
 const importPhotoBtn = document.getElementById('importPhotoBtn');
 const imgbbKeyPhoto = document.getElementById('imgbbKeyPhoto');
+const imgPctField = document.getElementById('imgPct');
+const imgWField = document.getElementById('imgW');
+const imgHField = document.getElementById('imgH');
+const imgUrlField = document.getElementById('imgUrl');
 let lastDataUrlPhoto = null;
+let originalImgSize = null;
+
+function setOriginalImageSize(width, height){
+  originalImgSize = { width, height };
+  if(!imgWField.value && !imgHField.value){
+    imgWField.value = width;
+    imgHField.value = height;
+  }
+}
+
+function updateSizeFromPercent(){
+  const pct = parseFloat(imgPctField.value);
+  if(!originalImgSize || !pct || pct <= 0) return;
+  imgWField.value = Math.round(originalImgSize.width * pct / 100);
+  imgHField.value = Math.round(originalImgSize.height * pct / 100);
+}
+
+function loadImageDimensions(url){
+  if(!url) return;
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.onload = ()=>{
+    setOriginalImageSize(image.naturalWidth, image.naturalHeight);
+    if(imgPctField.value) updateSizeFromPercent();
+  };
+  image.onerror = ()=>{ originalImgSize = null; };
+  image.src = url;
+}
+
+function loadFileDimensions(dataUrl){
+  if(!dataUrl) return;
+  const image = new Image();
+  image.onload = ()=>{
+    setOriginalImageSize(image.naturalWidth, image.naturalHeight);
+    if(imgPctField.value) updateSizeFromPercent();
+  };
+  image.src = dataUrl;
+}
 
 fileInputPhoto.addEventListener('change', async e=>{
   const f = e.target.files && e.target.files[0];
   importPhotoBtn.disabled = !f;
   if(!f){ lastDataUrlPhoto = null; return; }
   lastDataUrlPhoto = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+  loadFileDimensions(lastDataUrlPhoto);
 });
+
+imgUrlField.addEventListener('change', ()=>{
+  loadImageDimensions(imgUrlField.value.trim());
+});
+
+imgPctField.addEventListener('input', ()=>{
+  updateSizeFromPercent();
+});
+
+imgWField.addEventListener('input', ()=>{ if(imgWField.value || imgHField.value) imgPctField.value = ''; });
+imgHField.addEventListener('input', ()=>{ if(imgWField.value || imgHField.value) imgPctField.value = ''; });
 
 function dataURLtoBlob(dataurl){ const parts = dataurl.split(','); const m = parts[0].match(/:(.*?);/); const mime = m? m[1] : 'image/png'; const bstr = atob(parts[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new Blob([u8],{type:mime}); }
 
@@ -1105,8 +1172,7 @@ importPhotoBtn.addEventListener('click', async ()=>{
   try{
     const url = await uploadToImgbbPhoto(lastDataUrlPhoto);
     if(url){
-      const imgUrlField = document.getElementById('imgUrl');
-      if(imgUrlField){ imgUrlField.value = url; }
+      if(imgUrlField){ imgUrlField.value = url; loadImageDimensions(url); }
       closeAllPopovers();
       panelImg.classList.add('open');
       if(imgUrlField) imgUrlField.focus();
