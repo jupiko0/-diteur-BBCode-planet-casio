@@ -373,7 +373,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 </details>
 
 <script>
-/* ---------- Émojis (tableau par défaut, charges depuis le dépôt GitHub si voulu) ---------- */
+/* ---------- Émojis (tableau par défaut) ---------- */
 const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
 const GITHUB_EMOJI_FILES = [];
 const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
@@ -484,14 +484,6 @@ function closestInSelection(selector){
   return null;
 }
 
-function nodeHasSelector(node, selector){
-  while(node && node !== editor){
-    if(node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) return true;
-    node = node.parentElement;
-  }
-  return false;
-}
-
 function getBlockAncestor(node){
   if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
   if(!node || !editor.contains(node) || node === editor){
@@ -525,50 +517,62 @@ function setActive(id, on){
 }
 
 function updateToolbarState(){
-  setActive('bBold', !!closestInSelection('strong,b') || isCmdActive('bold'));
-  setActive('bItalic', !!closestInSelection('em,i') || isCmdActive('italic'));
-  setActive('bUnderline', !!closestInSelection('u') || isCmdActive('underline'));
-  setActive('bStrike', !!closestInSelection('s,strike,del') || isCmdActive('strikethrough'));
+  // GISB : Utilise queryCommandState pour capter l'état de saisie active sans sélection,
+  // combiné à la vérification d'éléments DOM si du texte est sélectionné.
+  setActive('bBold', isCmdActive('bold') || !!closestInSelection('strong,b'));
+  setActive('bItalic', isCmdActive('italic') || !!closestInSelection('em,i'));
+  setActive('bUnderline', isCmdActive('underline') || !!closestInSelection('u'));
+  setActive('bStrike', isCmdActive('strikeThrough') || !!closestInSelection('s,strike,del'));
   
+  // Centrer / Justifier
   const block = getBlockAncestor(window.getSelection().anchorNode);
   const align = block ? block.style.textAlign : '';
-  setActive('bCenter', align === 'center');
-  setActive('bJustify', align === 'justify');
+  setActive('bCenter', align === 'center' || isCmdActive('justifyCenter'));
+  setActive('bJustify', align === 'justify' || isCmdActive('justifyFull'));
   setActive('bSmall', !!closestInSelection('small'));
   setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
 
-/* ---------- Boutons de mise en forme native ---------- */
+/* ---------- Mise en forme GISB & Alignement ---------- */
 function cmd(command, value){
+  restoreSelection();
   document.execCommand(command, false, value || null);
   saveSelection();
   updateCount();
   updateToolbarState();
 }
 
-function toggleInlineTag(selector, openTag, closeTag, cmdName){
+function toggleInlineTag(command, selector, openTag, closeTag){
   restoreSelection();
-  const existing = closestInSelection(selector);
-  if(existing){
-    unwrapElement(existing);
-  } else if(hasSelection()){
-    wrapTag(openTag, closeTag);
-  } else if(cmdName){
-    document.execCommand(cmdName, false, null);
+  if(!hasSelection()){
+    // Préparation directe avant écriture (plusieurs combinaisons GISB cumulables)
+    document.execCommand(command, false, null);
+  } else {
+    // Application/suppression sur du texte déjà sélectionné
+    const existing = closestInSelection(selector);
+    if(existing){
+      unwrapElement(existing);
+    } else {
+      wrapTag(openTag, closeTag);
+    }
   }
   saveSelection();
   updateCount();
   updateToolbarState();
 }
 
-function toggleAlign(align){
+function toggleAlign(align, execCmd){
+  restoreSelection();
   const block = getBlockAncestor(window.getSelection().anchorNode);
-  if(!block) return;
-  if(block.style.textAlign === align){
-    block.style.textAlign = '';
-    if(!block.getAttribute('style')) block.removeAttribute('style');
+  if(block){
+    if(block.style.textAlign === align){
+      block.style.textAlign = '';
+      if(!block.getAttribute('style')) block.removeAttribute('style');
+    } else {
+      block.style.textAlign = align;
+    }
   } else {
-    block.style.textAlign = align;
+    document.execCommand(execCmd, false, null);
   }
   saveSelection();
   updateCount();
@@ -581,12 +585,12 @@ ribbonButtons.forEach(btn => {
   btn.addEventListener('mousedown', e => e.preventDefault());
 });
 
-document.getElementById('bBold').addEventListener('click', ()=> toggleInlineTag('strong,b', '<strong>','</strong>', 'bold'));
-document.getElementById('bItalic').addEventListener('click', ()=> toggleInlineTag('em,i', '<em>','</em>', 'italic'));
-document.getElementById('bUnderline').addEventListener('click', ()=> toggleInlineTag('u', '<u>','</u>', 'underline'));
-document.getElementById('bStrike').addEventListener('click', ()=> toggleInlineTag('s,strike,del', '<s>','</s>', 'strikethrough'));
-document.getElementById('bCenter').addEventListener('click', ()=> toggleAlign('center'));
-document.getElementById('bJustify').addEventListener('click', ()=> toggleAlign('justify'));
+document.getElementById('bBold').addEventListener('click', ()=> toggleInlineTag('bold', 'strong,b', '<strong>','</strong>'));
+document.getElementById('bItalic').addEventListener('click', ()=> toggleInlineTag('italic', 'em,i', '<em>','</em>'));
+document.getElementById('bUnderline').addEventListener('click', ()=> toggleInlineTag('underline', 'u', '<u>','</u>'));
+document.getElementById('bStrike').addEventListener('click', ()=> toggleInlineTag('strikeThrough', 's,strike,del', '<s>','</s>'));
+document.getElementById('bCenter').addEventListener('click', ()=> toggleAlign('center', 'justifyCenter'));
+document.getElementById('bJustify').addEventListener('click', ()=> toggleAlign('justify', 'justifyFull'));
 
 function removeFormatting(selector){
   restoreSelection();
@@ -626,7 +630,7 @@ document.getElementById('fontSel').addEventListener('change', function(){
   }
 });
 
-/* Couleur personnalisée : [color=#hex]...[/color] */
+/* Couleur personnalisée */
 const panelCustomColor = document.getElementById('panelCustomColor');
 panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
 const customColorPicker = document.getElementById('customColorPicker');
@@ -648,6 +652,7 @@ function wrapTag(openTag, closeTag){
   document.execCommand('insertHTML', false, openTag+html+closeTag);
 }
 document.getElementById('bSmall').addEventListener('click', ()=>{
+  restoreSelection();
   const existing = closestInSelection('small');
   if(existing){ unwrapElement(existing); }
   else if(hasSelection()){ wrapTag('<small>','</small>'); }
@@ -656,6 +661,7 @@ document.getElementById('bSmall').addEventListener('click', ()=>{
   updateToolbarState();
 });
 document.getElementById('bBig').addEventListener('click', ()=>{
+  restoreSelection();
   const existing = closestInSelection('span[style*="font-size"]');
   if(existing){ unwrapElement(existing); }
   else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
@@ -672,7 +678,7 @@ function insertHTMLAtCursor(html){
   updateCount();
 }
 
-/* ---------- Popovers de formulaire ---------- */
+/* ---------- Popovers ---------- */
 const allPopovers = document.querySelectorAll('.pop-panel, .emoji-grid');
 function closeAllPopovers(except){
   allPopovers.forEach(p=>{ if(p!==except) p.classList.remove('open'); });
@@ -756,7 +762,7 @@ document.getElementById('videoConfirm').addEventListener('click', ()=>{
   closeAllPopovers();
 });
 
-// Emoji panel
+// Emoji
 const panelEmoji = document.getElementById('panelEmoji');
 const emojiBtn = document.getElementById('emojiBtn');
 if(emojiBtn && panelEmoji){
@@ -1082,7 +1088,7 @@ function parseInlineBBCode(str){
   t = t.replace(/\[big\]([\s\S]*?)\[\/big\]/gi, '<span style="font-size:1.6em">$1</span>');
 
   EMOJIS.forEach(([code,val])=>{
-    const esc = (code || val).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+    const esc = (code || val).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if(isUrl(val)){
       const imgTag = `<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`;
       t = t.replace(new RegExp(esc,'g'), imgTag);
@@ -1185,12 +1191,11 @@ copyBtn.addEventListener('click', async ()=>{
   setTimeout(()=> copyMsg.textContent='', 1800);
 });
 
-/* ---------- Clic droit : modifier un élément déjà inséré ---------- */
+/* ---------- Clic droit : modification ---------- */
 const editPanel = document.getElementById('editPanel');
 editPanel.addEventListener('click', (e)=> e.stopPropagation());
 
 function esc(str){ return String(str).replace(/"/g,'&quot;'); }
-
 function closeEditPanel(){ editPanel.classList.remove('open'); editPanel.innerHTML=''; }
 
 editor.addEventListener('contextmenu', (e)=>{
@@ -1299,6 +1304,7 @@ function applyEdit(el, tag){
 </script>
 
 <script>
+// ImgBB upload configuration
 const imgPctField = document.getElementById('imgPct');
 const imgWField = document.getElementById('imgW');
 const imgHField = document.getElementById('imgH');
