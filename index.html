@@ -518,6 +518,7 @@ function updateToolbarState(){
 
 /* ---------- Boutons de mise en forme native ---------- */
 function cmd(command, value){
+  restoreSelection();
   document.execCommand(command, false, value || null);
   saveSelection();
   updateCount();
@@ -527,19 +528,28 @@ function cmd(command, value){
 function toggleAlign(align){
   restoreSelection();
   if (align === 'center') {
-    document.execCommand('justifyCenter', false, null);
+    if (isCmdActive('justifyCenter')) {
+      document.execCommand('justifyLeft', false, null);
+    } else {
+      document.execCommand('justifyCenter', false, null);
+    }
   } else if (align === 'justify') {
-    document.execCommand('justifyFull', false, null);
+    if (isCmdActive('justifyFull')) {
+      document.execCommand('justifyLeft', false, null);
+    } else {
+      document.execCommand('justifyFull', false, null);
+    }
   }
   saveSelection();
   updateCount();
   updateToolbarState();
 }
 
+// Empêcher la perte de focus lors du clic sur n'importe quel bouton de la barre d'outils
 const ribbonButtons = document.querySelectorAll('.ribbon button');
 ribbonButtons.forEach(btn => {
-  btn.addEventListener('pointerdown', e => e.preventDefault());
   btn.addEventListener('mousedown', e => e.preventDefault());
+  btn.addEventListener('pointerdown', e => e.preventDefault());
 });
 
 document.getElementById('bBold').addEventListener('click', ()=> cmd('bold'));
@@ -574,7 +584,7 @@ document.getElementById('colorSel').addEventListener('change', function(){
     this.value = '';
   }
 });
-document.getElementById('colorSel').addEventListener('click', (e)=> e.stopPropagation());
+document.getElementById('colorSel').addEventListener('mousedown', (e)=> e.stopPropagation());
 
 document.getElementById('fontSel').addEventListener('change', function(){
   const val = this.value;
@@ -586,12 +596,13 @@ document.getElementById('fontSel').addEventListener('change', function(){
     this.value = '';
   }
 });
+document.getElementById('fontSel').addEventListener('mousedown', (e)=> e.stopPropagation());
 
 /* Couleur personnalisée : [color=#hex]...[/color] */
 const panelCustomColor = document.getElementById('panelCustomColor');
 panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
 const customColorPicker = document.getElementById('customColorPicker');
-customColorHex = document.getElementById('customColorHex');
+const customColorHex = document.getElementById('customColorHex');
 customColorPicker.addEventListener('input', ()=>{ customColorHex.value = customColorPicker.value; });
 customColorHex.addEventListener('input', ()=>{
   if(/^#[0-9a-fA-F]{6}$/.test(customColorHex.value)) customColorPicker.value = customColorHex.value;
@@ -901,6 +912,7 @@ function buildEmojiGrid(){
   EMOJIS.slice().reverse().forEach(([code,val], idx)=>{
     const b = document.createElement('button');
     b.title = code || val;
+    b.addEventListener('mousedown', e => e.preventDefault());
     if(isUrl(val)){
       const img = document.createElement('img');
       img.src = val; img.alt = code || val; img.style.width = '22px'; img.style.height = '22px'; img.style.display = 'block';
