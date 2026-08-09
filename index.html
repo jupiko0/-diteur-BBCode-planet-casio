@@ -373,7 +373,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 </details>
 
 <script>
-/* ---------- Émojis ---------- */
+/* ---------- Émojis (tableau par défaut, charges depuis le dépôt GitHub si voulu) ---------- */
 const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
 const GITHUB_EMOJI_FILES = [];
 const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
@@ -390,7 +390,6 @@ const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
   [':E','https://www.planet-casio.com/images/smileys/mrgreen.gif'], [':@','https://www.planet-casio.com/images/smileys/mad.gif'], [':(','https://www.planet-casio.com/images/smileys/sad.gif'], [':)','https://www.planet-casio.com/images/smileys/smile.gif'],
   [';)', 'https://www.planet-casio.com/images/smileys/wink.gif'], [':mdr:','https://www.planet-casio.com/images/smileys/mdr.gif']
 ]);
-
 function loadEmojis(){
   try{ const raw = localStorage.getItem('emoji_list'); return raw ? JSON.parse(raw) : DEFAULT_EMOJIS.slice(); }catch(e){ return DEFAULT_EMOJIS.slice(); }
 }
@@ -412,14 +411,6 @@ const FONT_MAP = {arial:'Arial, sans-serif',courier:'Courier New, monospace',tah
 const FONT_MAP_REV = {}; Object.keys(FONT_MAP).forEach(k=> FONT_MAP_REV[FONT_MAP[k]] = k);
 
 const editor = document.getElementById('editor');
-
-function unwrapElement(el) {
-  if (!el || !el.parentNode) return;
-  while (el.firstChild) {
-    el.parentNode.insertBefore(el.firstChild, el);
-  }
-  el.parentNode.removeChild(el);
-}
 
 /* ---------- Sélection : sauvegarde / restauration ---------- */
 let savedRange = null;
@@ -465,82 +456,135 @@ function getActiveSelectionRange(){
   return savedRange ? savedRange.cloneRange() : null;
 }
 
+function resolveBoundaryNode(container, offset, isStart){
+  if(!container) return container;
+  if(container.nodeType === Node.TEXT_NODE) return container;
+  const kids = container.childNodes;
+  if(isStart){
+    return kids[offset] || kids[kids.length-1] || container;
+  }
+  return kids[offset-1] || kids[0] || container;
+}
+
 function closestInSelection(selector){
   const range = getActiveSelectionRange();
   if(!range) return null;
-  const anchors = [range.startContainer, range.endContainer];
-  for(let rawNode of anchors){
-    if(!rawNode) continue;
-    let el = rawNode.nodeType === Node.TEXT_NODE ? rawNode.parentElement : rawNode;
-    while(el && editor.contains(el)){
-      if(el.matches && el.matches(selector)){
-        return el;
-      }
-      el = el.parentElement;
+  const anchors = [
+    resolveBoundaryNode(range.startContainer, range.startOffset, true),
+    resolveBoundaryNode(range.endContainer, range.endOffset, false)
+  ];
+  for(const rawNode of anchors){
+    let node = rawNode;
+    if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    if(node && editor.contains(node)){
+      const found = node.closest(selector);
+      if(found) return found;
     }
   }
   return null;
 }
 
+function nodeHasSelector(node, selector){
+  while(node && node !== editor){
+    if(node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
+function getBlockAncestor(node){
+  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+  if(!node || !editor.contains(node) || node === editor){
+    const range = getActiveSelectionRange();
+    if(range){
+      node = resolveBoundaryNode(range.startContainer, range.startOffset, true);
+    }
+  }
+  if(!node || !editor.contains(node) || node === editor) return null;
+  while(node && node.parentNode !== editor){
+    node = node.parentNode;
+    if(!node) return null;
+  }
+  if(node.nodeType === Node.TEXT_NODE){
+    const wrapper = document.createElement('div');
+    node.parentNode.insertBefore(wrapper, node);
+    wrapper.appendChild(node);
+    node = wrapper;
+  }
+  return node;
+}
+
+function unwrapElement(el){
+  const parent = el.parentNode;
+  while(el.firstChild) parent.insertBefore(el.firstChild, el);
+  parent.removeChild(el);
+}
+
 function setActive(id, on){
-  const btn = document.getElementById(id);
-  if(btn) btn.classList.toggle('active', !!on);
+  document.getElementById(id).classList.toggle('active', !!on);
 }
 
 function updateToolbarState(){
-  // B = Gras (bold), I = Italique (italic), S = Souligné (underline), B = Barré (strikeThrough)
-  setActive('bBold', isCmdActive('bold'));
-  setActive('bItalic', isCmdActive('italic'));
-  setActive('bUnderline', isCmdActive('underline'));
-  setActive('bStrike', isCmdActive('strikeThrough'));
+  setActive('bBold', !!closestInSelection('strong,b') || isCmdActive('bold'));
+  setActive('bItalic', !!closestInSelection('em,i') || isCmdActive('italic'));
+  setActive('bUnderline', !!closestInSelection('u') || isCmdActive('underline'));
+  setActive('bStrike', !!closestInSelection('s,strike,del') || isCmdActive('strikethrough'));
   
-  setActive('bCenter', isCmdActive('justifyCenter'));
-  setActive('bJustify', isCmdActive('justifyFull'));
-  
-  setActive('bSmall', pendingSmall || !!closestInSelection('small'));
-  setActive('bBig', pendingBig || !!closestInSelection('span[style*="font-size"]'));
+  const block = getBlockAncestor(window.getSelection().anchorNode);
+  const align = block ? block.style.textAlign : '';
+  setActive('bCenter', align === 'center');
+  setActive('bJustify', align === 'justify');
+  setActive('bSmall', !!closestInSelection('small'));
+  setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
 
-/* ---------- Boutons de mise en forme ---------- */
+/* ---------- Boutons de mise en forme native ---------- */
 function cmd(command, value){
-  restoreSelection();
   document.execCommand(command, false, value || null);
   saveSelection();
   updateCount();
   updateToolbarState();
 }
 
-function toggleAlign(align){
+function toggleInlineTag(selector, openTag, closeTag, cmdName){
   restoreSelection();
-  if (align === 'center') {
-    if (isCmdActive('justifyCenter')) {
-      document.execCommand('justifyLeft', false, null);
-    } else {
-      document.execCommand('justifyCenter', false, null);
-    }
-  } else if (align === 'justify') {
-    if (isCmdActive('justifyFull')) {
-      document.execCommand('justifyLeft', false, null);
-    } else {
-      document.execCommand('justifyCenter', false, null);
-    }
+  const existing = closestInSelection(selector);
+  if(existing){
+    unwrapElement(existing);
+  } else if(hasSelection()){
+    wrapTag(openTag, closeTag);
+  } else if(cmdName){
+    document.execCommand(cmdName, false, null);
   }
   saveSelection();
   updateCount();
   updateToolbarState();
 }
 
-// Empêcher la perte de focus sur tous les boutons
+function toggleAlign(align){
+  const block = getBlockAncestor(window.getSelection().anchorNode);
+  if(!block) return;
+  if(block.style.textAlign === align){
+    block.style.textAlign = '';
+    if(!block.getAttribute('style')) block.removeAttribute('style');
+  } else {
+    block.style.textAlign = align;
+  }
+  saveSelection();
+  updateCount();
+  updateToolbarState();
+}
+
 const ribbonButtons = document.querySelectorAll('.ribbon button');
 ribbonButtons.forEach(btn => {
-  btn.addEventListener('mousedown', e => e.preventDefault());
   btn.addEventListener('pointerdown', e => e.preventDefault());
+  btn.addEventListener('mousedown', e => e.preventDefault());
 });
 
-document.getElementById('bBold').addEventListener('click', ()=> cmd('bold'));
-document.getElementById('bItalic').addEventListener('click', ()=> cmd('italic'));
-document.getElementById('bUnderline').addEventListener('click', ()=> cmd('underline'));
-document.getElementById('bStrike').addEventListener('click', ()=> cmd('strikeThrough'));
+document.getElementById('bBold').addEventListener('click', ()=> toggleInlineTag('strong,b', '<strong>','</strong>', 'bold'));
+document.getElementById('bItalic').addEventListener('click', ()=> toggleInlineTag('em,i', '<em>','</em>', 'italic'));
+document.getElementById('bUnderline').addEventListener('click', ()=> toggleInlineTag('u', '<u>','</u>', 'underline'));
+document.getElementById('bStrike').addEventListener('click', ()=> toggleInlineTag('s,strike,del', '<s>','</s>', 'strikethrough'));
 document.getElementById('bCenter').addEventListener('click', ()=> toggleAlign('center'));
 document.getElementById('bJustify').addEventListener('click', ()=> toggleAlign('justify'));
 
@@ -569,7 +613,7 @@ document.getElementById('colorSel').addEventListener('change', function(){
     this.value = '';
   }
 });
-document.getElementById('colorSel').addEventListener('mousedown', (e)=> e.stopPropagation());
+document.getElementById('colorSel').addEventListener('click', (e)=> e.stopPropagation());
 
 document.getElementById('fontSel').addEventListener('change', function(){
   const val = this.value;
@@ -581,9 +625,8 @@ document.getElementById('fontSel').addEventListener('change', function(){
     this.value = '';
   }
 });
-document.getElementById('fontSel').addEventListener('mousedown', (e)=> e.stopPropagation());
 
-/* Couleur personnalisée */
+/* Couleur personnalisée : [color=#hex]...[/color] */
 const panelCustomColor = document.getElementById('panelCustomColor');
 panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
 const customColorPicker = document.getElementById('customColorPicker');
@@ -600,80 +643,25 @@ document.getElementById('customColorConfirm').addEventListener('click', ()=>{
 });
 
 /* ---------- Petit / Grand ---------- */
-let pendingSmall = false;
-let pendingBig = false;
-
 function wrapTag(openTag, closeTag){
   const html = getSelectionHTML();
   document.execCommand('insertHTML', false, openTag+html+closeTag);
 }
-
-document.getElementById('bSmall').addEventListener('click', () => {
-  restoreSelection();
+document.getElementById('bSmall').addEventListener('click', ()=>{
   const existing = closestInSelection('small');
-  
-  if (existing) {
-    unwrapElement(existing);
-    pendingSmall = false;
-  } else if (hasSelection()) {
-    wrapTag('<small>', '</small>');
-    pendingSmall = false;
-  } else {
-    pendingSmall = !pendingSmall;
-    if (pendingSmall) pendingBig = false;
-  }
-  
+  if(existing){ unwrapElement(existing); }
+  else if(hasSelection()){ wrapTag('<small>','</small>'); }
   saveSelection();
+  updateCount();
   updateToolbarState();
 });
-
-document.getElementById('bBig').addEventListener('click', () => {
-  restoreSelection();
+document.getElementById('bBig').addEventListener('click', ()=>{
   const existing = closestInSelection('span[style*="font-size"]');
-  
-  if (existing) {
-    unwrapElement(existing);
-    pendingBig = false;
-  } else if (hasSelection()) {
-    wrapTag('<span style="font-size:1.6em">', '</span>');
-    pendingBig = false;
-  } else {
-    pendingBig = !pendingBig;
-    if (pendingBig) pendingSmall = false;
-  }
-  
+  if(existing){ unwrapElement(existing); }
+  else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
   saveSelection();
+  updateCount();
   updateToolbarState();
-});
-
-editor.addEventListener('beforeinput', (e) => {
-  if (e.inputType.startsWith('insertText') && (pendingSmall || pendingBig)) {
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-
-    const el = document.createElement(pendingSmall ? 'small' : 'span');
-    if (pendingBig) el.style.fontSize = '1.6em';
-
-    el.textContent = e.data;
-    e.preventDefault();
-
-    range.deleteContents();
-    range.insertNode(el);
-
-    const newRange = document.createRange();
-    newRange.setStart(el.firstChild, el.textContent.length);
-    newRange.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
-
-    pendingSmall = false;
-    pendingBig = false;
-    
-    saveSelection();
-    updateCount();
-    updateToolbarState();
-  }
 });
 
 /* ---------- Insertion de blocs ---------- */
@@ -684,7 +672,7 @@ function insertHTMLAtCursor(html){
   updateCount();
 }
 
-/* ---------- Popovers ---------- */
+/* ---------- Popovers de formulaire ---------- */
 const allPopovers = document.querySelectorAll('.pop-panel, .emoji-grid');
 function closeAllPopovers(except){
   allPopovers.forEach(p=>{ if(p!==except) p.classList.remove('open'); });
@@ -768,7 +756,7 @@ document.getElementById('videoConfirm').addEventListener('click', ()=>{
   closeAllPopovers();
 });
 
-// Emoji
+// Emoji panel
 const panelEmoji = document.getElementById('panelEmoji');
 const emojiBtn = document.getElementById('emojiBtn');
 if(emojiBtn && panelEmoji){
@@ -897,7 +885,6 @@ function buildEmojiGrid(){
   EMOJIS.slice().reverse().forEach(([code,val], idx)=>{
     const b = document.createElement('button');
     b.title = code || val;
-    b.addEventListener('mousedown', e => e.preventDefault());
     if(isUrl(val)){
       const img = document.createElement('img');
       img.src = val; img.alt = code || val; img.style.width = '22px'; img.style.height = '22px'; img.style.display = 'block';
@@ -1095,7 +1082,7 @@ function parseInlineBBCode(str){
   t = t.replace(/\[big\]([\s\S]*?)\[\/big\]/gi, '<span style="font-size:1.6em">$1</span>');
 
   EMOJIS.forEach(([code,val])=>{
-    const esc = (code || val).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const esc = (code || val).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
     if(isUrl(val)){
       const imgTag = `<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`;
       t = t.replace(new RegExp(esc,'g'), imgTag);
@@ -1198,7 +1185,7 @@ copyBtn.addEventListener('click', async ()=>{
   setTimeout(()=> copyMsg.textContent='', 1800);
 });
 
-/* ---------- Clic droit : modifier un élément ---------- */
+/* ---------- Clic droit : modifier un élément déjà inséré ---------- */
 const editPanel = document.getElementById('editPanel');
 editPanel.addEventListener('click', (e)=> e.stopPropagation());
 
@@ -1312,7 +1299,6 @@ function applyEdit(el, tag){
 </script>
 
 <script>
-/* ---------- Image Upload & Controls ---------- */
 const imgPctField = document.getElementById('imgPct');
 const imgWField = document.getElementById('imgW');
 const imgHField = document.getElementById('imgH');
