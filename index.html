@@ -373,7 +373,7 @@ summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--tex
 </details>
 
 <script>
-/* ---------- Émojis (tableau par défaut) ---------- */
+/* ---------- Émojis ---------- */
 const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
 const GITHUB_EMOJI_FILES = [];
 const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
@@ -517,14 +517,11 @@ function setActive(id, on){
 }
 
 function updateToolbarState(){
-  // GISB : Utilise queryCommandState pour capter l'état de saisie active sans sélection,
-  // combiné à la vérification d'éléments DOM si du texte est sélectionné.
   setActive('bBold', isCmdActive('bold') || !!closestInSelection('strong,b'));
   setActive('bItalic', isCmdActive('italic') || !!closestInSelection('em,i'));
   setActive('bUnderline', isCmdActive('underline') || !!closestInSelection('u'));
   setActive('bStrike', isCmdActive('strikeThrough') || !!closestInSelection('s,strike,del'));
   
-  // Centrer / Justifier
   const block = getBlockAncestor(window.getSelection().anchorNode);
   const align = block ? block.style.textAlign : '';
   setActive('bCenter', align === 'center' || isCmdActive('justifyCenter'));
@@ -533,7 +530,7 @@ function updateToolbarState(){
   setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
 }
 
-/* ---------- Mise en forme GISB & Alignement ---------- */
+/* ---------- Mise en forme GISB & Alignement (Mode Toggle Actif/Désactif) ---------- */
 function cmd(command, value){
   restoreSelection();
   document.execCommand(command, false, value || null);
@@ -544,14 +541,19 @@ function cmd(command, value){
 
 function toggleInlineTag(command, selector, openTag, closeTag){
   restoreSelection();
-  if(!hasSelection()){
-    // Préparation directe avant écriture (plusieurs combinaisons GISB cumulables)
-    document.execCommand(command, false, null);
-  } else {
-    // Application/suppression sur du texte déjà sélectionné
-    const existing = closestInSelection(selector);
+  const existing = closestInSelection(selector);
+  
+  // Si déjà présent ou actif -> on désactive
+  if(existing || isCmdActive(command)){
     if(existing){
       unwrapElement(existing);
+    } else {
+      document.execCommand(command, false, null);
+    }
+  } else {
+    // Si inactif -> on active
+    if(!hasSelection()){
+      document.execCommand(command, false, null);
     } else {
       wrapTag(openTag, closeTag);
     }
@@ -566,9 +568,11 @@ function toggleAlign(align, execCmd){
   const block = getBlockAncestor(window.getSelection().anchorNode);
   if(block){
     if(block.style.textAlign === align){
+      // Si déjà aligné -> désactiver l'alignement
       block.style.textAlign = '';
       if(!block.getAttribute('style')) block.removeAttribute('style');
     } else {
+      // Activer l'alignement
       block.style.textAlign = align;
     }
   } else {
@@ -1304,7 +1308,7 @@ function applyEdit(el, tag){
 </script>
 
 <script>
-// ImgBB upload configuration
+// Configuration du téléversement ImgBB
 const imgPctField = document.getElementById('imgPct');
 const imgWField = document.getElementById('imgW');
 const imgHField = document.getElementById('imgH');
