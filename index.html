@@ -469,12 +469,14 @@ function closestInSelection(selector){
   const range = getActiveSelectionRange();
   if(!range) return null;
   const anchors = [range.startContainer, range.endContainer];
-  for(const rawNode of anchors){
-    let node = rawNode;
-    if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    if(node && editor.contains(node)){
-      const found = node.closest(selector);
-      if(found) return found;
+  for(let rawNode of anchors){
+    if(!rawNode) continue;
+    let el = rawNode.nodeType === Node.TEXT_NODE ? rawNode.parentElement : rawNode;
+    while(el && editor.contains(el)){
+      if(el.matches && el.matches(selector)){
+        return el;
+      }
+      el = el.parentElement;
     }
   }
   return null;
@@ -486,6 +488,7 @@ function setActive(id, on){
 }
 
 function updateToolbarState(){
+  // B = Gras (bold), I = Italique (italic), S = Souligné (underline), B = Barré (strikeThrough)
   setActive('bBold', isCmdActive('bold'));
   setActive('bItalic', isCmdActive('italic'));
   setActive('bUnderline', isCmdActive('underline'));
@@ -519,7 +522,7 @@ function toggleAlign(align){
     if (isCmdActive('justifyFull')) {
       document.execCommand('justifyLeft', false, null);
     } else {
-      document.execCommand('justifyFull', false, null);
+      document.execCommand('justifyCenter', false, null);
     }
   }
   saveSelection();
