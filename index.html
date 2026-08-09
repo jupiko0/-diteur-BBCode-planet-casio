@@ -413,7 +413,7 @@ const FONT_MAP_REV = {}; Object.keys(FONT_MAP).forEach(k=> FONT_MAP_REV[FONT_MAP
 
 const editor = document.getElementById('editor');
 
-/* ---------- Fonction utilitaire manquante ---------- */
+/* ---------- Fonction utilitaire : suppression d'élément en gardant le contenu ---------- */
 function unwrapElement(el) {
   if (!el || !el.parentNode) return;
   while (el.firstChild) {
@@ -481,14 +481,6 @@ function closestInSelection(selector){
   return null;
 }
 
-function nodeHasSelector(node, selector){
-  while(node && node !== editor){
-    if(node.nodeType === Node.ELEMENT_NODE && node.matches(selector)) return true;
-    node = node.parentElement;
-  }
-  return false;
-}
-
 function getBlockAncestor(node){
   if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
   if(!node || !editor.contains(node)){
@@ -507,7 +499,8 @@ function getBlockAncestor(node){
 }
 
 function setActive(id, on){
-  document.getElementById(id).classList.toggle('active', !!on);
+  const btn = document.getElementById(id);
+  if(btn) btn.classList.toggle('active', !!on);
 }
 
 function updateToolbarState(){
@@ -516,13 +509,11 @@ function updateToolbarState(){
   setActive('bUnderline', isCmdActive('underline'));
   setActive('bStrike', isCmdActive('strikeThrough'));
   
-  const block = getBlockAncestor();
-  const currentAlign = block && block.style ? block.style.textAlign : '';
-  setActive('bCenter', currentAlign === 'center' || isCmdActive('justifyCenter'));
-  setActive('bJustify', currentAlign === 'justify' || isCmdActive('justifyFull'));
+  setActive('bCenter', isCmdActive('justifyCenter'));
+  setActive('bJustify', isCmdActive('justifyFull'));
   
-  setActive('bSmall', !!closestInSelection('small'));
-  setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
+  setActive('bSmall', pendingSmall || !!closestInSelection('small'));
+  setActive('bBig', pendingBig || !!closestInSelection('span[style*="font-size"]'));
 }
 
 /* ---------- Boutons de mise en forme native ---------- */
@@ -535,16 +526,10 @@ function cmd(command, value){
 
 function toggleAlign(align){
   restoreSelection();
-  const block = getBlockAncestor();
-  if (block) {
-    if (block.style.textAlign === align) {
-      block.style.textAlign = '';
-    } else {
-      block.style.textAlign = align;
-    }
-  } else {
-    const cmdName = align === 'center' ? 'justifyCenter' : 'justifyFull';
-    document.execCommand(cmdName, false, null);
+  if (align === 'center') {
+    document.execCommand('justifyCenter', false, null);
+  } else if (align === 'justify') {
+    document.execCommand('justifyFull', false, null);
   }
   saveSelection();
   updateCount();
@@ -606,7 +591,7 @@ document.getElementById('fontSel').addEventListener('change', function(){
 const panelCustomColor = document.getElementById('panelCustomColor');
 panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
 const customColorPicker = document.getElementById('customColorPicker');
-const customColorHex = document.getElementById('customColorHex');
+customColorHex = document.getElementById('customColorHex');
 customColorPicker.addEventListener('input', ()=>{ customColorHex.value = customColorPicker.value; });
 customColorHex.addEventListener('input', ()=>{
   if(/^#[0-9a-fA-F]{6}$/.test(customColorHex.value)) customColorPicker.value = customColorHex.value;
@@ -618,26 +603,81 @@ document.getElementById('customColorConfirm').addEventListener('click', ()=>{
   document.getElementById('panelCustomColor').classList.remove('open');
 });
 
-/* ---------- Petit / Grand ---------- */
+/* ---------- Petit / Grand (préparation + sélection) ---------- */
+let pendingSmall = false;
+let pendingBig = false;
+
 function wrapTag(openTag, closeTag){
   const html = getSelectionHTML();
   document.execCommand('insertHTML', false, openTag+html+closeTag);
 }
-document.getElementById('bSmall').addEventListener('click', ()=>{
+
+document.getElementById('bSmall').addEventListener('click', () => {
+  restoreSelection();
   const existing = closestInSelection('small');
-  if(existing){ unwrapElement(existing); }
-  else if(hasSelection()){ wrapTag('<small>','</small>'); }
+  
+  if (existing) {
+    unwrapElement(existing);
+    pendingSmall = false;
+  } else if (hasSelection()) {
+    wrapTag('<small>', '</small>');
+    pendingSmall = false;
+  } else {
+    pendingSmall = !pendingSmall;
+    if (pendingSmall) pendingBig = false;
+  }
+  
   saveSelection();
-  updateCount();
   updateToolbarState();
 });
-document.getElementById('bBig').addEventListener('click', ()=>{
+
+document.getElementById('bBig').addEventListener('click', () => {
+  restoreSelection();
   const existing = closestInSelection('span[style*="font-size"]');
-  if(existing){ unwrapElement(existing); }
-  else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
+  
+  if (existing) {
+    unwrapElement(existing);
+    pendingBig = false;
+  } else if (hasSelection()) {
+    wrapTag('<span style="font-size:1.6em">', '</span>');
+    pendingBig = false;
+  } else {
+    pendingBig = !pendingBig;
+    if (pendingBig) pendingSmall = false;
+  }
+  
   saveSelection();
-  updateCount();
   updateToolbarState();
+});
+
+editor.addEventListener('beforeinput', (e) => {
+  if (e.inputType.startsWith('insertText') && (pendingSmall || pendingBig)) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+
+    const el = document.createElement(pendingSmall ? 'small' : 'span');
+    if (pendingBig) el.style.fontSize = '1.6em';
+
+    el.textContent = e.data;
+    e.preventDefault();
+
+    range.deleteContents();
+    range.insertNode(el);
+
+    const newRange = document.createRange();
+    newRange.setStart(el.firstChild, el.textContent.length);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+
+    pendingSmall = false;
+    pendingBig = false;
+    
+    saveSelection();
+    updateCount();
+    updateToolbarState();
+  }
 });
 
 /* ---------- Insertion de blocs ---------- */
@@ -1057,15 +1097,15 @@ function parseInlineBBCode(str){
   t = t.replace(/\[small\]([\s\S]*?)\[\/small\]/gi, '<small>$1</small>');
   t = t.replace(/\[big\]([\s\S]*?)\[\/big\]/gi, '<span style="font-size:1.6em">$1</span>');
 
-    EMOJIS.forEach(([code,val])=>{
-      const esc = (code || val).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
-      if(isUrl(val)){
-        const imgTag = `<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`;
-        t = t.replace(new RegExp(esc,'g'), imgTag);
-      } else {
-        t = t.replace(new RegExp(esc,'g'), val);
-      }
-    });
+  EMOJIS.forEach(([code,val])=>{
+    const esc = (code || val).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if(isUrl(val)){
+      const imgTag = `<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`;
+      t = t.replace(new RegExp(esc,'g'), imgTag);
+    } else {
+      t = t.replace(new RegExp(esc,'g'), val);
+    }
+  });
 
   return t;
 }
