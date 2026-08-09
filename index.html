@@ -413,7 +413,6 @@ const FONT_MAP_REV = {}; Object.keys(FONT_MAP).forEach(k=> FONT_MAP_REV[FONT_MAP
 
 const editor = document.getElementById('editor');
 
-/* ---------- Fonction utilitaire : suppression d'élément en gardant le contenu ---------- */
 function unwrapElement(el) {
   if (!el || !el.parentNode) return;
   while (el.firstChild) {
@@ -481,23 +480,6 @@ function closestInSelection(selector){
   return null;
 }
 
-function getBlockAncestor(node){
-  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-  if(!node || !editor.contains(node)){
-    const range = getActiveSelectionRange();
-    if(range){
-      node = range.startContainer;
-      if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    }
-  }
-  if(!node || !editor.contains(node)) return null;
-  while(node && node.parentElement !== editor){
-    node = node.parentElement;
-    if(!node) return null;
-  }
-  return node;
-}
-
 function setActive(id, on){
   const btn = document.getElementById(id);
   if(btn) btn.classList.toggle('active', !!on);
@@ -516,7 +498,7 @@ function updateToolbarState(){
   setActive('bBig', pendingBig || !!closestInSelection('span[style*="font-size"]'));
 }
 
-/* ---------- Boutons de mise en forme native ---------- */
+/* ---------- Boutons de mise en forme ---------- */
 function cmd(command, value){
   restoreSelection();
   document.execCommand(command, false, value || null);
@@ -545,7 +527,7 @@ function toggleAlign(align){
   updateToolbarState();
 }
 
-// Empêcher la perte de focus lors du clic sur n'importe quel bouton de la barre d'outils
+// Empêcher la perte de focus sur tous les boutons
 const ribbonButtons = document.querySelectorAll('.ribbon button');
 ribbonButtons.forEach(btn => {
   btn.addEventListener('mousedown', e => e.preventDefault());
@@ -598,7 +580,7 @@ document.getElementById('fontSel').addEventListener('change', function(){
 });
 document.getElementById('fontSel').addEventListener('mousedown', (e)=> e.stopPropagation());
 
-/* Couleur personnalisée : [color=#hex]...[/color] */
+/* Couleur personnalisée */
 const panelCustomColor = document.getElementById('panelCustomColor');
 panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
 const customColorPicker = document.getElementById('customColorPicker');
@@ -614,7 +596,7 @@ document.getElementById('customColorConfirm').addEventListener('click', ()=>{
   document.getElementById('panelCustomColor').classList.remove('open');
 });
 
-/* ---------- Petit / Grand (préparation + sélection) ---------- */
+/* ---------- Petit / Grand ---------- */
 let pendingSmall = false;
 let pendingBig = false;
 
@@ -699,7 +681,7 @@ function insertHTMLAtCursor(html){
   updateCount();
 }
 
-/* ---------- Popovers de formulaire ---------- */
+/* ---------- Popovers ---------- */
 const allPopovers = document.querySelectorAll('.pop-panel, .emoji-grid');
 function closeAllPopovers(except){
   allPopovers.forEach(p=>{ if(p!==except) p.classList.remove('open'); });
@@ -783,7 +765,7 @@ document.getElementById('videoConfirm').addEventListener('click', ()=>{
   closeAllPopovers();
 });
 
-// Emoji panel
+// Emoji
 const panelEmoji = document.getElementById('panelEmoji');
 const emojiBtn = document.getElementById('emojiBtn');
 if(emojiBtn && panelEmoji){
