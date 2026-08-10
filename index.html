@@ -1,1466 +1,647 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Éditeur BBCode — mode Word</title>
-<style>
-:root{
-  --bg:#191b21;
-  --panel:#20232b;
-  --panel-2:#262a34;
-  --line:#333846;
-  --text:#e7e9ee;
-  --text-dim:#9aa0af;
-  --accent:#e53200;
-  --teal:#4ec9b0;
-  --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
-  --disp:'Space Grotesk',Arial,sans-serif;
-  --body:'Inter',Arial,sans-serif;
-}
-*{box-sizing:border-box;}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
-header{padding:20px 28px 14px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;}
-header h1{font-family:var(--disp);font-size:1.4rem;margin:0;letter-spacing:.3px;}
-header h1 span{color:var(--accent);}
-header p{margin:0;color:var(--text-dim);font-size:.82rem;}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Borne de commande</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --mcdo-green: #2A7A3A;
+      --mcdo-green-dark: #1D5E2A;
+      --mcdo-yellow: #FFC72C;
+      --paper: #F4F9F5;
+      --paper-2: #E5F0E8;
+      --line: #C8DBCE;
+      --gray: #5A6F5E;
+      --ink: #1A2B1C;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;}
+    body{font-family:'Inter',Arial,sans-serif;background:#1e2a20;color:var(--ink);}
+    .kiosk{width:100vw;height:100vh;background:var(--paper);display:flex;flex-direction:column;overflow:hidden;}
+    .kiosk-screen{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 
-.ribbon{
-  position:sticky;top:0;z-index:30;
-  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
-  padding:10px 16px;background:var(--panel-2);border-bottom:1px solid var(--line);
-}
-.ribbon button{
-  background:var(--bg);border:1px solid var(--line);color:var(--text);
-  padding:6px 11px;border-radius:6px;font-family:var(--body);font-size:.8rem;cursor:pointer;transition:.15s;
-}
-.ribbon button:hover{border-color:var(--accent);color:var(--accent);}
-.ribbon button.active{background:var(--accent);color:#1a1200;border-color:var(--accent);}
-.ribbon button b, .ribbon button i, .ribbon button u, .ribbon button s{font-family:var(--disp);}
-.ribbon select{
-  background:var(--bg);border:1px solid var(--line);color:var(--text);
-  padding:6px 8px;border-radius:6px;font-size:.8rem;
-}
-.sep{width:1px;height:22px;background:var(--line);margin:0 4px;}
-.emoji-pop{position:relative;}
-.emoji-grid{
-  display:none;position:absolute;top:110%;left:0;background:var(--panel-2);
-  border:1px solid var(--line);border-radius:8px;padding:8px;
-  grid-template-columns:repeat(8,28px);gap:4px;z-index:40;box-shadow:0 10px 30px #0008;
-}
-.emoji-grid.open{display:grid;}
-.emoji-grid button{padding:2px;font-size:1.1rem;border-radius:5px;border:none;background:transparent;}
-.emoji-grid button:hover{background:var(--line);}
+    .app-header{background:var(--mcdo-green);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:10;}
+    .app-header .title{font-weight:800;font-size:18px;}
+    .app-header .order-type{background:rgba(255,255,255,.16);border:none;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;}
+    .header-spacer{flex:1;}
+    .cart-btn{background:var(--mcdo-yellow);border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;}
+    .cart-btn .badge{position:absolute;top:-4px;right:-4px;background:var(--ink);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--mcdo-green);}
 
-.pop-wrap{position:relative;display:inline-block;}
-.pop-panel{
-  display:none;position:absolute;top:110%;left:0;background:var(--panel-2);
-  border:1px solid var(--line);border-radius:8px;padding:12px;min-width:230px;
-  z-index:40;box-shadow:0 10px 30px #0008;
-}
-.pop-panel.open{display:block;}
-.pop-panel label{display:block;font-size:.7rem;color:var(--text-dim);margin:8px 0 4px;}
-.pop-panel label:first-child{margin-top:0;}
-.pop-panel input, .pop-panel select{
-  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);
-  padding:6px 8px;border-radius:5px;font-size:.8rem;
-}
-.pop-panel .row{display:flex;gap:8px;}
-.pop-panel .row > div{flex:1;}
-.pop-panel button.confirm{
-  margin-top:10px;width:100%;background:var(--accent);color:#1a1200;border:none;
-  padding:10px 12px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;min-height:42px;line-height:1.2;
-}
-.pop-panel button.confirm.red{background:#a02222;color:#fff;}
-.pop-panel button.confirm:hover{filter:brightness(1.08);}
-.emoji-codes{margin-top:10px;color:var(--text-dim);font-size:.75rem;line-height:1.5;word-break:break-word;}
-.img-preview-wrapper{display:none;margin:12px auto 0;max-width:calc(100% - 20px);text-align:center;}
-.img-preview-wrapper img{display:block;margin:0 auto;max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;}
+    .categories{display:flex;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto;flex-shrink:0;scrollbar-width:none;}
+    .categories::-webkit-scrollbar{display:none;}
+    .cat-btn{border:none;background:var(--paper-2);color:var(--ink);font-weight:700;font-size:12px;padding:8px 16px;border-radius:999px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+    .cat-btn.active{background:var(--mcdo-green);color:#fff;}
 
-.canvas{
-  background:#2b2e37;
-  padding:44px 20px 60px;
-  display:flex;justify-content:center;
-  min-height:60vh;
-}
-#editor{
-  background:#fdfdfb;
-  color:#1c1c1c;
-  width:100%;max-width:800px;min-height:65vh;
-  padding:56px 64px;
-  box-shadow:0 14px 40px #0008, 0 0 0 1px #0003;
-  border-radius:2px;
-  font-family:'Calibri','Segoe UI',Arial,sans-serif;
-  font-size:1.02rem;line-height:1.65;
-  outline:none;
-}
-#editor .bb-quote{
-  border-left:3px solid var(--accent);background:#f4f1ea;margin:10px 0;padding:8px 14px;border-radius:0 6px 6px 0;
-}
-#editor .q-author{font-style:italic;font-size:.82rem;color:#777;margin-bottom:4px;}
-#editor .bb-code{
-  background:#161821;color:#d7dae2;border:1px solid #333;border-radius:6px;
-  padding:10px 12px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;
-  white-space:pre-wrap;
-}
-#editor .bb-code code{display:block;white-space:pre;}
-#editor .bb-code .token-comment{color:#6a9955;}
-#editor .bb-code .token-keyword{color:#c586c0;}
-#editor .bb-code .token-type{color:#4ec9b0;}
-#editor .bb-code .token-string{color:#ce9178;}
-#editor .bb-code .token-number{color:#b5cea8;}
-#editor .bb-code .token-tag{color:#569cd6;}
-#editor .bb-code .token-attr-name{color:#9cdcfe;}
-#editor .bb-code .token-attr-value{color:#ce9178;}
-#editor .bb-code .token-punctuation{color:#d4d4d4;}
-#editor .bb-code .token-variable{color:#9cdcfe;}
-.pop-panel textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:8px;border-radius:6px;font-family:var(--mono);font-size:.8rem;resize:vertical;min-height:120px;margin-top:4px;}
-#editor .bb-spoiler-block{border:1px solid #a02222;border-radius:6px;margin:10px 0;overflow:hidden;}
-#editor .bb-spoiler-label{background:#a02222;color:#fff;font-weight:700;font-size:.8rem;padding:6px 12px;}
-#editor .bb-spoiler-body{padding:10px 12px;}
-#editor .bb-progress-block{margin:10px 0;}
-#editor .bb-progress-outer{border:1px solid #ccc;border-radius:4px;overflow:hidden;height:24px;background:#eee;max-width:400px;}
-#editor .bb-progress-inner{background:var(--accent);height:100%;display:flex;align-items:center;padding-left:8px;color:#241800;font-weight:700;font-size:.78rem;outline:none;}
-#editor .bb-profil{color:#1a6ea8;font-weight:600;text-decoration:underline dotted;cursor:default;}
-#editor img{max-width:100%;}
-#editor img, #editor video, #editor a, #editor .bb-profil, #editor .bb-quote, #editor .bb-spoiler-block, #editor .bb-progress-block{
-  cursor:context-menu;
-}
-#editor a{color:#1a6ea8;}
+    #catalog{flex:1;overflow-y:auto;padding:14px 16px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;align-content:start;}
+    .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;display:flex;flex-direction:column;position:relative;}
+    .card:active{transform:scale(.96);}
+    .card .img-wrap{aspect-ratio:1/1;border-radius:12px;background:var(--paper-2);overflow:hidden;margin-bottom:8px;display:flex;align-items:center;justify-content:center;}
+    .card .img-wrap img{width:100%;height:100%;object-fit:contain;padding:4px;}
+    .card .name{font-weight:700;font-size:13px;}
+    .card .price{font-weight:800;color:var(--mcdo-green-dark);font-size:14px;margin-top:4px;}
+    .card .tag{position:absolute;top:6px;left:6px;background:var(--mcdo-green);color:#fff;font-size:8px;font-weight:800;padding:2px 8px;border-radius:999px;}
+    .card .add-btn{background:var(--mcdo-yellow);border:none;width:28px;height:28px;border-radius:50%;font-size:16px;font-weight:800;cursor:pointer;float:right;margin-top:-6px;}
 
-.actions{display:flex;gap:10px;padding:16px 28px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);}
-.btn-primary{background:var(--accent);color:#1a1200;border:none;padding:10px 20px;border-radius:8px;font-weight:700;font-family:var(--disp);cursor:pointer;}
-.btn-primary:hover{filter:brightness(1.08);}
-.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text-dim);padding:10px 16px;border-radius:8px;cursor:pointer;}
-.btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
-#wordCount{margin-left:auto;color:var(--text-dim);font-family:var(--mono);font-size:.75rem;}
+    #cartbar{position:fixed;bottom:16px;left:16px;right:16px;background:var(--mcdo-green);color:#fff;border-radius:16px;padding:14px 20px;display:none;align-items:center;justify-content:space-between;cursor:pointer;z-index:20;box-shadow:0 8px 24px rgba(42,122,58,.4);}
+    #cartbar.show{display:flex;}
+    #cartbar .left{display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;}
+    #cartbar .left .circle{background:var(--mcdo-yellow);color:var(--ink);width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;}
+    #cartbar .right{font-weight:800;font-size:15px;}
 
-#exportWrap{display:none;margin:0 28px 28px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
-#exportWrap.open{display:block;}
+    #overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:30;}
+    #overlay.show{display:flex;}
+    #modal{background:#fff;border-radius:24px 24px 0 0;width:100%;max-height:85%;overflow-y:auto;padding:20px 24px 24px;}
+    #modal-close{float:right;background:var(--paper-2);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;}
+    .modal-img{width:120px;height:120px;margin:0 auto 8px;border-radius:16px;background:var(--paper-2);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+    .modal-img img{width:100%;height:100%;object-fit:contain;padding:8px;}
+    #modal h3{text-align:center;font-size:18px;}
+    .m-desc{text-align:center;color:var(--gray);font-size:12px;margin-bottom:12px;}
+    .option-group{margin:12px 0;}
+    .option-group .group-label{font-weight:800;color:var(--mcdo-green-dark);font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px;}
+    .opt{display:flex;justify-content:space-between;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:6px;cursor:pointer;}
+    .opt.selected{border-color:var(--mcdo-green);background:#EAF5EE;}
+    .opt .opt-emoji{font-size:20px;margin-right:8px;}
+    #modal-add-btn{width:100%;background:var(--mcdo-yellow);border:none;padding:14px;border-radius:14px;font-weight:800;font-size:15px;cursor:pointer;margin-top:8px;}
 
-.modal-overlay{
-  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);
-  z-index:100;align-items:center;justify-content:center;padding:20px;
-}
-.modal-overlay.open{display:flex;}
-.modal-box{
-  background:var(--panel);border:1px solid var(--line);border-radius:10px;
-  padding:22px;width:100%;max-width:620px;box-shadow:0 20px 60px #000a;
-}
-.modal-box h3{margin:0 0 6px;font-family:var(--disp);color:var(--text);}
-.modal-box p{margin:0 0 12px;color:var(--text-dim);font-size:.82rem;}
-.modal-box textarea{
-  width:100%;min-height:220px;background:var(--bg);color:var(--teal);
-  font-family:var(--mono);font-size:.82rem;border:1px solid var(--line);
-  border-radius:6px;padding:12px;resize:vertical;
-}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;}
-#exportHead{padding:10px 16px;background:var(--panel-2);font-family:var(--mono);font-size:.75rem;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;}
-#exportText{width:100%;min-height:160px;border:none;background:var(--panel);color:var(--teal);font-family:var(--mono);font-size:.85rem;padding:16px;resize:vertical;}
+    #drawer-scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .25s;z-index:25;}
+    #drawer-scrim.show{opacity:1;pointer-events:auto;}
+    #drawer{position:fixed;bottom:0;left:0;right:0;height:88%;background:#fff;border-radius:24px 24px 0 0;transform:translateY(100%);transition:transform .3s;z-index:26;display:flex;flex-direction:column;box-shadow:0 -10px 30px rgba(0,0,0,.15);}
+    #drawer.open{transform:translateY(0);}
+    .drawer-handle{width:40px;height:4px;background:var(--line);border-radius:3px;margin:12px auto 4px;flex-shrink:0;}
+    .drawer-head{padding:8px 20px 14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--line);flex-shrink:0;}
+    .drawer-head h2{font-size:17px;}
+    #drawer-close{background:var(--paper-2);border:none;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;}
+    #drawer-items{flex:1;overflow-y:auto;padding:8px 20px;}
+    .empty-cart{text-align:center;color:var(--gray);padding:60px 20px;}
+    .empty-cart .big{font-size:48px;display:block;margin-bottom:10px;}
+    .cart-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line);}
+    .cart-item .ci-img{width:44px;height:44px;border-radius:12px;background:var(--paper-2);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .cart-item .ci-img img{width:100%;height:100%;object-fit:contain;padding:4px;}
+    .cart-item .info{flex:1;}
+    .cart-item .info .name{font-weight:700;font-size:13px;}
+    .cart-item .line-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
+    .qty-ctrl{display:flex;align-items:center;gap:8px;background:var(--paper-2);border-radius:999px;padding:2px 4px;}
+    .qty-ctrl button{width:22px;height:22px;border:none;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1);font-weight:800;cursor:pointer;font-size:13px;}
+    .qty-ctrl span{font-size:13px;font-weight:700;min-width:16px;text-align:center;}
+    .item-price{font-weight:800;font-size:13px;color:var(--mcdo-green-dark);}
+    .remove-btn{background:none;border:none;color:var(--gray);font-size:10px;text-decoration:underline;cursor:pointer;margin-top:2px;}
+    #drawer-footer{flex-shrink:0;padding:12px 20px 20px;border-top:1px solid var(--line);}
+    .totals-row{display:flex;justify-content:space-between;font-size:12px;color:var(--gray);margin-bottom:4px;}
+    .totals-row.total{font-size:18px;font-weight:800;color:var(--ink);margin:8px 0 12px;}
+    #drawer-checkout{width:100%;background:var(--mcdo-green);color:#fff;border:none;padding:14px;border-radius:14px;font-weight:800;font-size:15px;cursor:pointer;}
+    #drawer-checkout:disabled{background:#d0e0d2;color:#8a9a8a;cursor:not-allowed;}
+    #drawer-continue{width:100%;background:none;border:none;color:var(--gray);font-size:11px;margin-top:8px;cursor:pointer;text-decoration:underline;}
 
-details{margin:0 28px 28px;border:1px solid var(--line);border-radius:10px;background:var(--panel);}
-summary{padding:12px 16px;cursor:pointer;font-family:var(--disp);color:var(--text-dim);font-size:.85rem;}
-.ref{padding:0 16px 16px;font-family:var(--mono);font-size:.76rem;color:var(--text-dim);line-height:1.9;}
-.ref b{color:var(--text);}
-</style>
+    #screen-confirm{position:fixed;inset:0;background:var(--mcdo-green);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:40;}
+    #screen-confirm.show{display:flex;}
+    #screen-confirm .check{width:70px;height:70px;border-radius:50%;background:var(--mcdo-yellow);display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--mcdo-green);margin-bottom:10px;}
+    #screen-confirm h1{color:#fff;font-size:20px;}
+    #screen-confirm p{color:rgba(255,255,255,.85);font-size:13px;margin-bottom:12px;text-align:center;}
+    .receipt{background:#fffdf8;width:100%;max-width:340px;border-radius:10px;padding:16px;max-height:45vh;overflow-y:auto;font-size:12px;}
+    .receipt .r-title{text-align:center;font-weight:800;font-size:14px;}
+    .receipt .r-num{text-align:center;font-size:28px;font-weight:900;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:6px 0;margin:6px 0;color:var(--mcdo-green-dark);}
+    .receipt .r-line{display:flex;justify-content:space-between;padding:2px 0;}
+    .receipt .r-total{display:flex;justify-content:space-between;font-weight:800;font-size:14px;border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;}
+    .receipt .r-type{text-align:center;font-size:10px;color:var(--gray);margin-top:6px;}
+    #confirm-new-btn{margin-top:16px;background:#fff;color:var(--mcdo-green);border:none;padding:12px 32px;border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;}
+    #json-status{color:#fff;font-size:12px;margin-top:8px;opacity:.8;text-align:center;}
+
+    #screen-welcome{position:fixed;inset:0;background:linear-gradient(165deg,var(--mcdo-green),#155020);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:50;}
+    #screen-welcome .logo{font-size:72px;margin-bottom:8px;}
+    #screen-welcome h1{font-size:26px;}
+    #screen-welcome p{opacity:.9;max-width:300px;font-size:14px;margin:4px 0 20px;}
+    #screen-welcome .choices{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;}
+    #screen-welcome .choice-btn{background:#fff;color:var(--ink);border:none;border-radius:16px;padding:16px 20px;font-weight:800;font-size:15px;display:flex;align-items:center;gap:14px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+    #screen-welcome .choice-btn .ico{font-size:28px;}
+    #screen-welcome .choice-btn small{display:block;font-weight:500;font-size:11px;color:var(--gray);}
+
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  </style>
 </head>
 <body>
 
-<header>
-  <h1>Éditeur <span>BBCode</span> — mode Word</h1>
-</header>
+<div class="kiosk">
+  <div class="kiosk-screen">
+    <div id="app">
 
-<div class="ribbon" id="ribbon">
-  <button id="bBold"><b>G</b></button>
-  <button id="bItalic"><i>I</i></button>
-  <button id="bUnderline"><u>S</u></button>
-  <button id="bStrike"><s>B</s></button>
-  <div class="sep"></div>
-  <button id="bCenter">Centrer</button>
-  <button id="bJustify">Justifier</button>
-  <button id="bSmall">Petit</button>
-  <button id="bBig">Grand</button>
-  <div class="sep"></div>
-  <div class="pop-wrap">
-    <select id="colorSel">
-      <option value="">Couleur…</option>
-      <option value="normal">normal</option>
-      <option value="custom">personnalisé…</option>
-      <option value="red" style="color:#e0453b;">rouge</option>
-      <option value="blue" style="color:#3b7fe0;">bleu</option>
-      <option value="green" style="color:#3bb054;">vert</option>
-      <option value="yellow" style="color:#c9b800;">jaune</option>
-      <option value="maroon" style="color:#7a1f2b;">bourdeaux</option>
-      <option value="purple" style="color:#8b3be0;">violet</option>
-      <option value="gray" style="color:#8a8f9c;">gris</option>
-      <option value="brown" style="color:#8a5a2b;">marron</option>
-    </select>
-    <div class="pop-panel" id="panelCustomColor">
-      <label>Couleur personnalisée</label>
-      <div class="row">
-        <div style="flex:0 0 46px;"><input type="color" id="customColorPicker" value="#00a1fe" style="height:34px;padding:2px;"></div>
-        <div><input type="text" id="customColorHex" value="#00A1FE" placeholder="#00A1FE"></div>
+      <header class="app-header">
+        <span class="title">🍔 McBORNE</span>
+        <button class="order-type" id="order-type-btn">🍽️ Sur place</button>
+        <div class="header-spacer"></div>
+        <button class="cart-btn" id="cart-btn">🛒<span class="badge" id="cart-badge">0</span></button>
+      </header>
+
+      <nav class="categories" id="categories"></nav>
+      <div id="catalog"></div>
+
+      <div id="cartbar">
+        <div class="left"><span class="circle" id="cartbar-count">0</span> <span id="cartbar-label">articles</span></div>
+        <div class="right"><span id="cartbar-total">0,00 €</span> ›</div>
       </div>
-      <button class="confirm" id="customColorConfirm">Appliquer la couleur</button>
-    </div>
-  </div>
-  <select id="fontSel">
-    <option value="">Police…</option>
-    <option value="normal">normal</option>
-    <option value="arial" style="font-family:Arial, sans-serif;">arial</option>
-    <option value="courier" style="font-family:'Courier New', monospace;">courier</option>
-    <option value="tahoma" style="font-family:Tahoma, sans-serif;">tahoma</option>
-    <option value="comic" style="font-family:'Comic Sans MS', cursive;">comic</option>
-    <option value="haettenschweiler" style="font-family:Haettenschweiler, Impact, sans-serif;">version 1.0</option>
-  </select>
-  <div class="sep"></div>
-  <div class="pop-wrap">
-    <button id="bLink">Lien</button>
-    <div class="pop-panel" id="panelLink">
-      <label>Adresse du lien</label>
-      <input type="text" id="linkUrl" placeholder="https://...">
-      <label>Nom du lien (facultatif, ignoré si texte sélectionné)</label>
-      <input type="text" id="linkName" placeholder="texte affiché">
-      <button class="confirm" id="linkConfirm">Insérer le lien</button>
-    </div>
-  </div>
-  <div class="pop-wrap">
-    <button id="bImg">Image</button>
-    <div class="pop-panel" id="panelImg">
-      <label>Adresse de l'image</label>
-      <input type="text" id="imgUrl" placeholder="https://...">
-      <label>Alignement</label>
-      <select id="imgAlign">
-        <option value="">Aucun</option>
-        <option value="float-left">Flottant à gauche</option>
-        <option value="float-right">Flottant à droite</option>
-        <option value="center">Centré</option>
-      </select>
-      <div class="row">
-        <div><label>Largeur (px)</label><input type="number" id="imgW" placeholder="ex: 200"></div>
-        <div><label>Hauteur (px)</label><input type="number" id="imgH" placeholder="ex: 150"></div>
-      </div>
-      <div class="row">
-        <div style="flex:1;">
-          <label>Pourcentage</label>
-          <input type="number" id="imgPct" min="1" max="500" placeholder="ex: 50">
+
+      <div id="screen-welcome">
+        <div class="logo">🍔</div>
+        <h1>Bienvenue</h1>
+        <p>Composez votre commande</p>
+        <div class="choices">
+          <button class="choice-btn" data-type="sur_place"><span class="ico">🍽️</span><span>Sur place<small>Je mange au restaurant</small></span></button>
+          <button class="choice-btn" data-type="emporter"><span class="ico">🥡</span><span>À emporter<small>Je pars avec ma commande</small></span></button>
         </div>
       </div>
-      <div class="row">
-        <div style="flex:1;"><button class="confirm" id="imgConfirm">Insérer l'image</button></div>
-        <div style="flex:1;"><button class="confirm red" id="imgCancel">Annuler</button></div>
-      </div>
-      <label>Ou téléverser depuis votre ordinateur</label>
-      <div class="row" style="align-items:center;">
-        <div style="flex:1;">
-          <input type="file" id="imgFile" accept="image/*" style="display:none;">
-          <label for="imgFile" class="confirm red" style="width:100%;text-align:center;cursor:pointer;">Choisir un fichier</label>
+
+      <div id="overlay">
+        <div id="modal">
+          <button id="modal-close">✕</button>
+          <div id="modal-body"></div>
         </div>
-        <div style="flex:0 0 120px;"><button class="confirm red" id="imgUpload">Téléverser</button></div>
       </div>
-      <div id="imgPreviewWrapper" class="img-preview-wrapper" style="display:none;">
-        <img id="imgPreview" alt="Prévisualisation de l'image">
+
+      <div id="drawer-scrim"></div>
+      <div id="drawer">
+        <div class="drawer-handle"></div>
+        <div class="drawer-head"><h2>🧾 Mon panier</h2><button id="drawer-close">✕</button></div>
+        <div id="drawer-items"></div>
+        <div id="drawer-footer">
+          <div class="totals-row"><span>Sous-total</span><span id="sub-total">0,00 €</span></div>
+          <div class="totals-row total"><span>Total</span><span id="grand-total">0,00 €</span></div>
+          <button id="drawer-checkout" disabled>✅ Valider la commande</button>
+          <button id="drawer-continue">Continuer mes achats</button>
+        </div>
       </div>
-      <div style="margin-top:8px;color:var(--text-dim);font-size:.8rem;text-align:center;">Téléversement via imgbb.</div>
-    </div>
-  </div>
-  <div class="pop-wrap">
-    <button id="bVideo">Vidéo</button>
-    <div class="pop-panel" id="panelVideo">
-      <label>Adresse de la vidéo</label>
-      <input type="text" id="videoUrl" placeholder="https://...">
-      <button class="confirm" id="videoConfirm">Insérer la vidéo</button>
-    </div>
-  </div>
-  <div class="pop-wrap">
-    <button id="bProfil">Profil</button>
-    <div class="pop-panel" id="panelProfil">
-      <label>Nom du profil</label>
-      <input type="text" id="profilName" placeholder="pseudo">
-      <button class="confirm" id="profilConfirm">Insérer le profil</button>
-    </div>
-  </div>
-  <div class="pop-wrap">
-    <button id="bCode">Code</button>
-    <div class="pop-panel" id="panelCode">
-      <label>Langage</label>
-      <select id="codeLang">
-        <option value="">Aucun / brut</option>
-        <option value="c">C</option>
-        <option value="h">H</option>
-        <option value="python">Python</option>
-        <option value="pl">Perl</option>
-        <option value="html">HTML</option>
-        <option value="bash">Bash</option>
-      </select>
-      <label>Code</label>
-      <textarea id="codeText" placeholder="Coller votre code ici"></textarea>
-      <button class="confirm" id="codeConfirm">Insérer le code</button>
-    </div>
-  </div>
-  <button id="bQuote">Citation</button>
-  <div class="pop-wrap">
-    <button id="bSpoiler">Spoiler</button>
-    <div class="pop-panel" id="panelSpoiler">
-      <label>Texte du bouton replié</label>
-      <input type="text" id="spoilerClosed" value="Afficher le spoiler">
-      <label>Texte du bouton déplié</label>
-      <input type="text" id="spoilerOpen" value="Masquer le spoiler">
-      <button class="confirm" id="spoilerConfirm">Insérer le spoiler</button>
-    </div>
-  </div>
-  <div class="pop-wrap">
-    <button id="bProgress">Barre progrès</button>
-    <div class="pop-panel" id="panelProgress">
-      <label>Pourcentage (0-100)</label>
-      <input type="number" id="progPct" value="50" min="0" max="100">
-      <label>Titre</label>
-      <input type="text" id="progTitle" placeholder="ex: Chargement">
-      <button class="confirm" id="progConfirm">Insérer la barre</button>
-    </div>
-  </div>
-  <div class="emoji-pop">
-    <button id="emojiBtn">Emoji ▾</button>
-      <div class="pop-panel" id="panelEmoji">
-        <div class="emoji-grid" id="emojiGrid"></div>
+
+      <div id="screen-confirm">
+        <div class="check">✓</div>
+        <h1>Commande validée !</h1>
+        <p>Votre commande a été enregistrée</p>
+        <div class="receipt" id="receipt"></div>
+        <div id="json-status">📄 Fichier commande.json mis à jour</div>
+        <button id="confirm-new-btn">Nouvelle commande</button>
       </div>
-  </div>
-</div>
 
-<div class="canvas">
-  <div id="editor" contenteditable="true" spellcheck="true"><div></div></div>
-</div>
-  
-<div class="actions">
-  <button class="btn-primary" id="exportBtn">Exporter en texte</button>
-  <button class="btn-ghost" id="copyBtn" style="display:none;">Copier le texte</button>
-  <button class="btn-ghost" id="importBtn">Importer BBCode</button>
-  <button class="btn-ghost" id="clearBtn">Vider la page</button>
-  <span id="copyMsg" style="color:var(--teal);font-family:var(--mono);font-size:.78rem;"></span>
-  <span id="wordCount">0 mots</span>
-</div>
-
-<div id="exportWrap">
-  <div id="exportHead">EXPORT — texte avec les balises</div>
-  <textarea id="exportText" readonly></textarea>
-</div>
-
-<div class="modal-overlay" id="importOverlay">
-  <div class="modal-box">
-    <h3>Importer du BBCode</h3>
-    <p>Colle ton texte avec les balises ci-dessous, puis clique sur Importer. Ça remplace tout le contenu de la page.</p>
-    <textarea id="importText" placeholder="[b]Bonjour[/b] [red]le monde[/red] :)&#10;[quote=Toto]une citation[/quote]"></textarea>
-    <div class="modal-actions">
-      <button class="btn-ghost" id="importCancel">Annuler</button>
-      <button class="btn-primary" id="importConfirm">Importer</button>
     </div>
   </div>
 </div>
-
-<div class="pop-panel" id="editPanel" style="position:fixed;"></div>
-
-<details>
-  <summary>Aide-mémoire des balises BBCode générées</summary>
-  <div class="ref">
-    <b>Lien :</b> [url=http://site]nom(facultatif)[/url]<br>
-    <b>Police :</b> [arial] [courier] [tahoma] [comic] [haettenschweiler]<br>
-    <b>Couleur :</b> [red] [blue] [green] [yellow] [maroon] [purple] [gray] [brown] ou [color=#00A1FE]…[/color]<br>
-    <b>Image :</b> [img]url[/img] · [img=float-left]url[/img] · [img=center]url[/img] · [img=LxH|float-right]url[/img]<br>
-    <b>Vidéo :</b> [video]url[/video] · <b>Profil :</b> [profil]nom[/profil] · <b>Code :</b> [code]…[/code]<br>
-    <b>Citation :</b> [quote=auteur]…[/quote] · <b>Spoiler :</b> [spoiler=replié|déplié]…[/spoiler]<br>
-    <b>Barre de progression :</b> [progress=50]titre[/progress]<br>
-    <b>Style :</b> [i] [b] [u] [strike] [center] [justify] [small] [big]
-  </div>
-</details>
 
 <script>
-/* ---------- Émojis ---------- */
-const GITHUB_EMOJI_BASE = 'https://raw.githubusercontent.com/<owner>/<repo>/main/emojis/';
-const GITHUB_EMOJI_FILES = [];
-const DEFAULT_EMOJIS = GITHUB_EMOJI_FILES.map(name=>[
-  name.replace(/\.gif$/i,''),
-  GITHUB_EMOJI_BASE + encodeURIComponent(name)
-]).concat([
-  [':bounce:','https://www.planet-casio.com/images/smileys/bounce.gif'], [':boulet2:','https://www.planet-casio.com/images/smileys/boulet2.gif'], [':whistle:','https://www.planet-casio.com/images/smileys/whistle.gif'], [':champ:','https://www.planet-casio.com/images/smileys/champion.gif'],
-  [':fusil:','https://www.planet-casio.com/images/smileys/fusil.gif'], [':argh:','https://www.planet-casio.com/images/smileys/insults.gif'], [':thx:','https://www.planet-casio.com/images/smileys/merci.gif'], [':oops:','https://www.planet-casio.com/images/smileys/confused2.gif'],
-  [':omg:','https://www.planet-casio.com/images/smileys/shocked2.gif'], [':love:','https://www.planet-casio.com/images/smileys/love.gif'], [':good:','https://www.planet-casio.com/images/smileys/welldone.gif'], [':cool:','https://www.planet-casio.com/images/smileys/cool.gif'],
-  [':bow:','https://www.planet-casio.com/images/smileys/bow.gif'], [':here:','https://www.planet-casio.com/images/smileys/pointer.gif'], [':mmm:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':waza:','https://www.planet-casio.com/images/smileys/waza.gif'],
-  [':sry:','https://www.planet-casio.com/images/smileys/rolleyes.gif'], [':grr:','https://www.planet-casio.com/images/smileys/evil.gif'], [":'(",'https://www.planet-casio.com/images/smileys/cry.gif'], [':aie:','https://www.planet-casio.com/images/smileys/banghead2.gif'],
-  [':lol:','https://www.planet-casio.com/images/smileys/lol.gif'], ['>:)', 'https://www.planet-casio.com/images/smileys/twisted.gif'], ['0_0','https://www.planet-casio.com/images/smileys/eek.gif'], ['8-)','https://www.planet-casio.com/images/smileys/cool2.gif'],
-  ['^^','https://www.planet-casio.com/images/smileys/eyebrows.gif'], [':D','https://www.planet-casio.com/images/smileys/grin.gif'], [':p','https://www.planet-casio.com/images/smileys/hehe.gif'], [':O','https://www.planet-casio.com/images/smileys/shocked.gif'],
-  [':E','https://www.planet-casio.com/images/smileys/mrgreen.gif'], [':@','https://www.planet-casio.com/images/smileys/mad.gif'], [':(','https://www.planet-casio.com/images/smileys/sad.gif'], [':)','https://www.planet-casio.com/images/smileys/smile.gif'],
-  [';)', 'https://www.planet-casio.com/images/smileys/wink.gif'], [':mdr:','https://www.planet-casio.com/images/smileys/mdr.gif']
-]);
-function loadEmojis(){
-  try{ const raw = localStorage.getItem('emoji_list'); return raw ? JSON.parse(raw) : DEFAULT_EMOJIS.slice(); }catch(e){ return DEFAULT_EMOJIS.slice(); }
-}
-function saveEmojis(list){ try{ localStorage.setItem('emoji_list', JSON.stringify(list)); }catch(e){} }
-let EMOJIS = loadEmojis();
+// ==================== IMAGES HÉBERGÉES SUR GITHUB ====================
+const IMG_BASE = 'https://raw.githubusercontent.com/jupiko0/mcdo/main/images/';
 
-function isUrl(s){ return typeof s === 'string' && /^https?:\/\//i.test(s); }
+// ==================== DONNÉES ====================
+const MENU_DATA = {
+  burgers: [
+    {id:'hamburger', name:'Hamburger', desc:'Steak haché, cornichon, oignon, ketchup, moutarde', price:1.90, img:'hamburger.png'},
+    {id:'cheeseburger', name:'Cheeseburger', desc:'Steak haché, cheddar fondant, cornichon', price:2.30, img:'cheeseburger.png'},
+    {id:'double_cheese', name:'Double Cheeseburger', desc:'Deux steaks hachés, double cheddar', price:3.60, img:'double-cheeseburger.png'},
+    {id:'bigmac', name:'Big Mac', desc:'Deux steaks hachés, sauce Big Mac, cheddar, salade, oignon, cornichon', price:5.90, img:'bigmac.png'}
+  ],
+  nuggets: [
+    {id:'nuggets4', name:'4 Nuggets', desc:'Poulet pané croustillant', price:2.90, img:'nuggets.png'},
+    {id:'nuggets6', name:'6 Nuggets', desc:'Poulet pané croustillant', price:4.10, img:'nuggets.png'},
+    {id:'nuggets9', name:'9 Nuggets', desc:'Poulet pané croustillant', price:5.50, img:'nuggets.png'}
+  ],
+  frites: [
+    {id:'frites_p', name:'Petite frite', desc:'Croustillantes à l\'extérieur, moelleuses à l\'intérieur', price:1.80, img:'frites.png'},
+    {id:'frites_m', name:'Moyenne frite', desc:'Croustillantes à l\'extérieur, moelleuses à l\'intérieur', price:2.40, img:'frites.png'},
+    {id:'frites_g', name:'Grande frite', desc:'Croustillantes à l\'extérieur, moelleuses à l\'intérieur', price:3.00, img:'frites.png'}
+  ],
+  boissons: [
+    {id:'jus_pomme', name:'Jus de pomme', desc:'Boisson fraîche', price:1.50, img:'boisson-jus-pomme.png'},
+    {id:'coca', name:'Coca-Cola', desc:'Boisson fraîche', price:1.50, img:'boisson-coca.png'},
+    {id:'ice_tea', name:'Ice Tea', desc:'Boisson fraîche', price:1.55, img:'boisson-ice-tea.png'},
+    {id:'eau_gazeuse', name:'Eau gazeuse', desc:'Boisson fraîche', price:1.50, img:'boisson-eau-gazeuse.png'},
+    {id:'eau', name:'Eau plate', desc:'Boisson fraîche', price:1.50, img:'boisson-eau.png'}
+  ],
+  menus: [
+    {id:'best_of', name:'Menu Best Of', desc:'Choisissez votre burger, frites, sauce et boisson', price:7.90, img:'menu-best-of.png', tag:'MENU', wizard:true},
+    {id:'maxi_best_of', name:'Menu Maxi Best Of', desc:'Comme le Best Of, en grande frite et grande boisson', price:9.90, img:'menu-maxi-best-of.png', tag:'MENU', wizard:true},
+    {id:'happy_meal', name:'Happy Meal', desc:'Hamburger ou nuggets, frite, boisson et jouet surprise', price:5.50, img:'menu-happy-meal.png', tag:'MENU', wizard:true}
+  ]
+};
 
-const COLOR_MAP = {red:'#e0453b',blue:'#3b7fe0',green:'#3bb054',yellow:'#c9b800',maroon:'#7a1f2b',purple:'#8b3be0',gray:'#8a8f9c',brown:'#8a5a2b'};
-const COLOR_MAP_REV = {}; Object.keys(COLOR_MAP).forEach(k=> COLOR_MAP_REV[COLOR_MAP[k].toLowerCase()] = k);
-function normalizeColor(str){
-  if(!str) return '';
-  const m = str.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-  if(!m) return str.trim().toLowerCase();
-  const toHex = n=> Math.max(0,Math.min(255,parseInt(n,10))).toString(16).padStart(2,'0');
-  return '#'+toHex(m[1])+toHex(m[2])+toHex(m[3]);
-}
-const FONT_MAP = {arial:'Arial, sans-serif',courier:'Courier New, monospace',tahoma:'Tahoma, sans-serif',comic:'Comic Sans MS, cursive',haettenschweiler:'Haettenschweiler, Impact, sans-serif'};
-const FONT_MAP_REV = {}; Object.keys(FONT_MAP).forEach(k=> FONT_MAP_REV[FONT_MAP[k]] = k);
+// Sauces (pour le wizard)
+const SAUCE_OPTIONS = [
+  {id:'mayo', name:'Mayonnaise', price:0, img:'sauce-mayo.png'},
+  {id:'ketchup', name:'Ketchup', price:0, img:'sauce-ketchup.png'}
+];
 
-const editor = document.getElementById('editor');
+const CATEGORIES = [
+  {id:'menus', name:'Menus', emoji:'🍽️'},
+  {id:'burgers', name:'Burgers', emoji:'🍔'},
+  {id:'nuggets', name:'Nuggets', emoji:'🍗'},
+  {id:'frites', name:'Frites', emoji:'🍟'},
+  {id:'boissons', name:'Boissons', emoji:'🥤'}
+];
 
-/* ---------- Sélection : sauvegarde / restauration ---------- */
-let savedRange = null;
-function saveSelection(){
-  const sel = window.getSelection();
-  if(sel.rangeCount>0 && editor.contains(sel.anchorNode)){
-    savedRange = sel.getRangeAt(0).cloneRange();
-  }
-}
-document.addEventListener('selectionchange', ()=>{ saveSelection(); updateToolbarState(); });
-editor.addEventListener('keyup', ()=>{ saveSelection(); updateToolbarState(); });
-editor.addEventListener('mouseup', ()=>{ saveSelection(); updateToolbarState(); });
+// ==================== ÉTAT ====================
+let currentCat = 'menus';
+let cart = [];
+let orderType = 'sur_place';
 
-function restoreSelection(){
-  editor.focus();
-  if(savedRange){
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(savedRange);
-  }
-}
-
-function getSelectionHTML(){
-  const sel = window.getSelection();
-  if(!sel.rangeCount) return '';
-  const div = document.createElement('div');
-  div.appendChild(sel.getRangeAt(0).cloneContents());
-  return div.innerHTML;
+// ==================== FONCTIONS IMAGES ====================
+function getImgUrl(imgName) {
+  return IMG_BASE + imgName;
 }
 
-function hasSelection(){
-  const sel = window.getSelection();
-  return sel.rangeCount>0 && !sel.getRangeAt(0).collapsed;
+function imgHTML(imgName, alt = '') {
+  if (!imgName) return '';
+  return `<img src="${getImgUrl(imgName)}" alt="${alt}" loading="lazy" onerror="this.parentElement.innerHTML='<span style=\\'font-size:40px;\\'>🍔</span>'">`;
 }
 
-function isCmdActive(command){
-  try{ return document.queryCommandState(command); }catch(e){ return false; }
+// ==================== RENDER CATALOG ====================
+function renderCatalog() {
+  const items = MENU_DATA[currentCat] || [];
+  const el = document.getElementById('catalog');
+  el.innerHTML = items.map(p => `
+    <div class="card" data-id="${p.id}">
+      ${p.tag ? `<span class="tag">${p.tag}</span>` : ''}
+      <div class="img-wrap">${p.img ? imgHTML(p.img, p.name) : `<span style="font-size:40px;">🍔</span>`}</div>
+      <div class="name">${p.name}</div>
+      <div class="price">${fmt(p.price)}</div>
+      <button class="add-btn" onclick="event.stopPropagation(); openProduct('${currentCat}','${p.id}')">+</button>
+    </div>
+  `).join('');
 }
 
-function getActiveSelectionRange(){
-  const sel = window.getSelection();
-  if(sel.rangeCount && editor.contains(sel.anchorNode)) return sel.getRangeAt(0);
-  return savedRange ? savedRange.cloneRange() : null;
+function renderCategories() {
+  const el = document.getElementById('categories');
+  el.innerHTML = CATEGORIES.map(c => `
+    <button class="cat-btn ${c.id === currentCat ? 'active' : ''}" onclick="switchCategory('${c.id}')">
+      ${c.emoji} ${c.name}
+    </button>
+  `).join('');
 }
 
-function resolveBoundaryNode(container, offset, isStart){
-  if(!container) return container;
-  if(container.nodeType === Node.TEXT_NODE) return container;
-  const kids = container.childNodes;
-  if(isStart){
-    return kids[offset] || kids[kids.length-1] || container;
-  }
-  return kids[offset-1] || kids[0] || container;
+function switchCategory(id) {
+  currentCat = id;
+  renderCategories();
+  renderCatalog();
 }
 
-function closestInSelection(selector){
-  const range = getActiveSelectionRange();
-  if(!range) return null;
-  const anchors = [
-    resolveBoundaryNode(range.startContainer, range.startOffset, true),
-    resolveBoundaryNode(range.endContainer, range.endOffset, false)
+// ==================== OUVERTURE PRODUIT ====================
+function openProduct(cat, id) {
+  const p = MENU_DATA[cat].find(x => x.id === id);
+  if (!p) return;
+  if (p.wizard) { openWizard(p); return; }
+  addToCart(p);
+}
+
+// ==================== WIZARD ====================
+let wizardSteps = [];
+let wizardIndex = 0;
+let wizardChoices = {};
+let wizardMenu = null;
+
+function openWizard(menu) {
+  wizardMenu = menu;
+  wizardSteps = [];
+  wizardIndex = 0;
+  wizardChoices = {};
+  
+  let platOptions = [
+    {id:'hamburger', name:'Hamburger', price:0, img:'hamburger.png'},
+    {id:'cheeseburger', name:'Cheeseburger', price:0.40, img:'cheeseburger.png'},
+    {id:'double_cheese', name:'Double Cheeseburger', price:1.70, img:'double-cheeseburger.png'},
+    {id:'bigmac', name:'Big Mac', price:2.40, img:'bigmac.png'}
   ];
-  for(const rawNode of anchors){
-    let node = rawNode;
-    if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    if(node && editor.contains(node)){
-      const found = node.closest(selector);
-      if(found) return found;
-    }
+  if (menu.id === 'happy_meal') {
+    platOptions = [
+      {id:'hamburger', name:'Hamburger', price:0, img:'hamburger.png'},
+      {id:'nuggets4', name:'4 Nuggets', price:0, img:'nuggets.png'}
+    ];
   }
-  return null;
-}
-
-function getBlockAncestor(node){
-  if(node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-  if(!node || !editor.contains(node) || node === editor){
-    const range = getActiveSelectionRange();
-    if(range){
-      node = resolveBoundaryNode(range.startContainer, range.startOffset, true);
-    }
-  }
-  if(!node || !editor.contains(node) || node === editor) return null;
-  while(node && node.parentNode !== editor){
-    node = node.parentNode;
-    if(!node) return null;
-  }
-  if(node.nodeType === Node.TEXT_NODE){
-    const wrapper = document.createElement('div');
-    node.parentNode.insertBefore(wrapper, node);
-    wrapper.appendChild(node);
-    node = wrapper;
-  }
-  return node;
-}
-
-function unwrapElement(el){
-  const parent = el.parentNode;
-  while(el.firstChild) parent.insertBefore(el.firstChild, el);
-  parent.removeChild(el);
-}
-
-function setActive(id, on){
-  document.getElementById(id).classList.toggle('active', !!on);
-}
-
-function updateToolbarState(){
-  setActive('bBold', isCmdActive('bold') || !!closestInSelection('strong,b'));
-  setActive('bItalic', isCmdActive('italic') || !!closestInSelection('em,i'));
-  setActive('bUnderline', isCmdActive('underline') || !!closestInSelection('u'));
-  setActive('bStrike', isCmdActive('strikeThrough') || !!closestInSelection('s,strike,del'));
+  wizardSteps.push({title:'Choisissez votre plat', options:platOptions, key:'plat'});
   
-  const block = getBlockAncestor(window.getSelection().anchorNode);
-  const align = block ? block.style.textAlign : '';
-  setActive('bCenter', align === 'center' || isCmdActive('justifyCenter'));
-  setActive('bJustify', align === 'justify' || isCmdActive('justifyFull'));
-  setActive('bSmall', !!closestInSelection('small'));
-  setActive('bBig', !!closestInSelection('span[style*="font-size"]'));
-}
-
-/* ---------- Mise en forme GISB & Alignement (Mode Toggle Actif/Désactif) ---------- */
-function cmd(command, value){
-  restoreSelection();
-  document.execCommand(command, false, value || null);
-  saveSelection();
-  updateCount();
-  updateToolbarState();
-}
-
-function toggleInlineTag(command, selector, openTag, closeTag){
-  restoreSelection();
-  const existing = closestInSelection(selector);
+  let friesOpts = [
+    {id:'p', name:'Petite frite', price:0, img:'frites.png'},
+    {id:'m', name:'Moyenne frite', price:0.60, img:'frites.png'},
+    {id:'g', name:'Grande frite', price:1.20, img:'frites.png'}
+  ];
+  if (menu.id === 'happy_meal') friesOpts = [{id:'p', name:'Petite frite', price:0, img:'frites.png'}];
+  if (menu.id === 'maxi_best_of') {
+    friesOpts = [
+      {id:'p', name:'Petite frite', price:-1.20, img:'frites.png'},
+      {id:'m', name:'Moyenne frite', price:-0.60, img:'frites.png'},
+      {id:'g', name:'Grande frite', price:0, img:'frites.png'}
+    ];
+  }
+  wizardSteps.push({title:'Choisissez vos frites', options:friesOpts, key:'frites'});
   
-  // Si déjà présent ou actif -> on désactive
-  if(existing || isCmdActive(command)){
-    if(existing){
-      unwrapElement(existing);
-    } else {
-      document.execCommand(command, false, null);
-    }
+  wizardSteps.push({
+    title:'Choisissez votre sauce',
+    options:SAUCE_OPTIONS,
+    key:'sauce'
+  });
+  
+  wizardSteps.push({
+    title:'Choisissez votre boisson',
+    options:MENU_DATA.boissons.map(b => ({id:b.id, name:b.name, price:0, img:b.img})),
+    key:'boisson'
+  });
+  
+  const extras = [
+    {id:'extra_nuggets', name:'4 Nuggets en plus', price:2.90, img:'nuggets.png'},
+    {id:'extra_burger', name:'Hamburger en plus', price:1.90, img:'hamburger.png'}
+  ];
+  if (menu.id === 'happy_meal') extras.pop();
+  wizardSteps.push({
+    title:'Un petit plus ? (facultatif)',
+    options:extras,
+    key:'extra',
+    extras:true
+  });
+  
+  renderWizard();
+  document.getElementById('overlay').classList.add('show');
+}
+
+function renderWizard() {
+  const step = wizardSteps[wizardIndex];
+  const body = document.getElementById('modal-body');
+  const isExtra = step.extras || false;
+  let total = computeWizardTotal();
+  
+  let html = `<div class="modal-img">${step.options[0]?.img ? imgHTML(step.options[0].img, step.title) : '<span style="font-size:50px;">🍽️</span>'}</div>`;
+  html += `<h3>${step.title}</h3>`;
+  html += `<div style="text-align:center;font-size:12px;color:var(--gray);margin-bottom:12px;">Étape ${wizardIndex+1}/${wizardSteps.length}</div>`;
+  
+  if (isExtra) {
+    html += step.options.map(o => `
+      <div class="opt ${wizardChoices[o.id] ? 'selected' : ''}" onclick="toggleExtra('${o.id}')">
+        <span><span style="font-size:20px;margin-right:8px;">${o.img ? '🍗' : '🍔'}</span> ${o.name}</span>
+        <span style="color:var(--gray);font-size:12px;">+${fmt(o.price)}</span>
+      </div>
+    `).join('');
   } else {
-    // Si inactif -> on active
-    if(!hasSelection()){
-      document.execCommand(command, false, null);
-    } else {
-      wrapTag(openTag, closeTag);
-    }
+    html += step.options.map(o => `
+      <div class="opt ${wizardChoices[step.key] === o.id ? 'selected' : ''}" onclick="selectWizard('${step.key}','${o.id}')">
+        <span><span style="font-size:20px;margin-right:8px;">${o.img ? '🍔' : '🥤'}</span> ${o.name}</span>
+        <span style="color:var(--gray);font-size:12px;">${o.price > 0 ? '+'+fmt(o.price) : o.price < 0 ? fmt(o.price) : 'Inclus'}</span>
+      </div>
+    `).join('');
   }
-  saveSelection();
-  updateCount();
-  updateToolbarState();
-}
-
-function toggleAlign(align, execCmd){
-  restoreSelection();
-  const block = getBlockAncestor(window.getSelection().anchorNode);
-  if(block){
-    if(block.style.textAlign === align){
-      // Si déjà aligné -> désactiver l'alignement
-      block.style.textAlign = '';
-      if(!block.getAttribute('style')) block.removeAttribute('style');
-    } else {
-      // Activer l'alignement
-      block.style.textAlign = align;
-    }
-  } else {
-    document.execCommand(execCmd, false, null);
+  
+  const hasSelection = isExtra ? true : wizardChoices[step.key] !== undefined;
+  const isLast = wizardIndex === wizardSteps.length - 1;
+  
+  html += `<div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">`;
+  if (wizardIndex > 0) {
+    html += `<button onclick="wizardPrev()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700;">Retour</button>`;
   }
-  saveSelection();
-  updateCount();
-  updateToolbarState();
-}
-
-const ribbonButtons = document.querySelectorAll('.ribbon button');
-ribbonButtons.forEach(btn => {
-  btn.addEventListener('pointerdown', e => e.preventDefault());
-  btn.addEventListener('mousedown', e => e.preventDefault());
-});
-
-document.getElementById('bBold').addEventListener('click', ()=> toggleInlineTag('bold', 'strong,b', '<strong>','</strong>'));
-document.getElementById('bItalic').addEventListener('click', ()=> toggleInlineTag('italic', 'em,i', '<em>','</em>'));
-document.getElementById('bUnderline').addEventListener('click', ()=> toggleInlineTag('underline', 'u', '<u>','</u>'));
-document.getElementById('bStrike').addEventListener('click', ()=> toggleInlineTag('strikeThrough', 's,strike,del', '<s>','</s>'));
-document.getElementById('bCenter').addEventListener('click', ()=> toggleAlign('center', 'justifyCenter'));
-document.getElementById('bJustify').addEventListener('click', ()=> toggleAlign('justify', 'justifyFull'));
-
-function removeFormatting(selector){
-  restoreSelection();
-  const existing = closestInSelection(selector);
-  if(existing) unwrapElement(existing);
-  saveSelection();
-  updateToolbarState();
-  updateCount();
-}
-
-document.getElementById('colorSel').addEventListener('change', function(){
-  const val = this.value;
-  if(val === 'normal'){
-    closeAllPopovers();
-    removeFormatting('font[color]');
-    this.value = '';
-  } else if(val === 'custom'){
-    closeAllPopovers();
-    document.getElementById('panelCustomColor').classList.add('open');
-    this.value = '';
-  } else if(val){
-    closeAllPopovers();
-    cmd('foreColor', COLOR_MAP[val]);
-    this.value = '';
+  if (!isLast) {
+    html += `<button ${!hasSelection ? 'disabled' : ''} onclick="wizardNext()" style="flex:2;padding:12px;border-radius:12px;border:none;background:var(--mcdo-green);color:#fff;cursor:pointer;font-weight:700;">Suivant — ${fmt(total)}</button>`;
   }
-});
-document.getElementById('colorSel').addEventListener('click', (e)=> e.stopPropagation());
-
-document.getElementById('fontSel').addEventListener('change', function(){
-  const val = this.value;
-  if(val === 'normal'){
-    removeFormatting('font[face]');
-    this.value = '';
-  } else if(val){
-    cmd('fontName', FONT_MAP[val]);
-    this.value = '';
+  if (isLast) {
+    html += `<button onclick="commitWizard()" style="flex:2;padding:12px;border-radius:12px;border:none;background:var(--mcdo-yellow);cursor:pointer;font-weight:700;">Ajouter — ${fmt(total)}</button>`;
   }
-});
-
-/* Couleur personnalisée */
-const panelCustomColor = document.getElementById('panelCustomColor');
-panelCustomColor.addEventListener('click', (e)=> e.stopPropagation());
-const customColorPicker = document.getElementById('customColorPicker');
-const customColorHex = document.getElementById('customColorHex');
-customColorPicker.addEventListener('input', ()=>{ customColorHex.value = customColorPicker.value; });
-customColorHex.addEventListener('input', ()=>{
-  if(/^#[0-9a-fA-F]{6}$/.test(customColorHex.value)) customColorPicker.value = customColorHex.value;
-});
-document.getElementById('customColorConfirm').addEventListener('click', ()=>{
-  let hex = customColorHex.value.trim();
-  if(!/^#[0-9a-fA-F]{3,8}$/.test(hex)) hex = customColorPicker.value;
-  cmd('foreColor', hex);
-  document.getElementById('panelCustomColor').classList.remove('open');
-});
-
-/* ---------- Petit / Grand ---------- */
-function wrapTag(openTag, closeTag){
-  const html = getSelectionHTML();
-  document.execCommand('insertHTML', false, openTag+html+closeTag);
-}
-document.getElementById('bSmall').addEventListener('click', ()=>{
-  restoreSelection();
-  const existing = closestInSelection('small');
-  if(existing){ unwrapElement(existing); }
-  else if(hasSelection()){ wrapTag('<small>','</small>'); }
-  saveSelection();
-  updateCount();
-  updateToolbarState();
-});
-document.getElementById('bBig').addEventListener('click', ()=>{
-  restoreSelection();
-  const existing = closestInSelection('span[style*="font-size"]');
-  if(existing){ unwrapElement(existing); }
-  else if(hasSelection()){ wrapTag('<span style="font-size:1.6em">','</span>'); }
-  saveSelection();
-  updateCount();
-  updateToolbarState();
-});
-
-/* ---------- Insertion de blocs ---------- */
-function insertHTMLAtCursor(html){
-  restoreSelection();
-  document.execCommand('insertHTML', false, html);
-  saveSelection();
-  updateCount();
-}
-
-/* ---------- Popovers ---------- */
-const allPopovers = document.querySelectorAll('.pop-panel, .emoji-grid');
-function closeAllPopovers(except){
-  allPopovers.forEach(p=>{ if(p!==except) p.classList.remove('open'); });
-}
-function togglePopover(btn, panel){
-  btn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    restoreSelection();
-    const willOpen = !panel.classList.contains('open');
-    closeAllPopovers();
-    if(willOpen) {
-      panel.classList.add('open');
-      if(panel.id === 'panelEmoji'){
-        buildEmojiGrid();
-        emojiGrid.classList.add('open');
-      }
-    }
-  });
-  panel.addEventListener('click', (e)=> e.stopPropagation());
-  panel.querySelectorAll('input').forEach(inp=>{
-    inp.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter'){ e.preventDefault(); panel.querySelector('.confirm').click(); }
-    });
-  });
-}
-document.addEventListener('click', ()=> closeAllPopovers());
-
-// Lien
-const panelLink = document.getElementById('panelLink');
-togglePopover(document.getElementById('bLink'), panelLink);
-document.getElementById('linkConfirm').addEventListener('click', ()=>{
-  const url = document.getElementById('linkUrl').value.trim();
-  if(!url) return;
-  const nameField = document.getElementById('linkName').value.trim();
-  const text = hasSelection() ? getSelectionHTML() : (nameField || url);
-  insertHTMLAtCursor(`<a href="${url}" target="_blank">${text}</a>`);
-  document.getElementById('linkUrl').value=''; document.getElementById('linkName').value='';
-  closeAllPopovers();
-});
-
-// Image
-const panelImg = document.getElementById('panelImg');
-togglePopover(document.getElementById('bImg'), panelImg);
-document.getElementById('imgConfirm').addEventListener('click', ()=>{
-  const url = document.getElementById('imgUrl').value.trim();
-  if(!url) return;
-  const align = document.getElementById('imgAlign').value;
-  let w = document.getElementById('imgW').value.trim();
-  let h = document.getElementById('imgH').value.trim();
-  const pct = parseFloat(document.getElementById('imgPct').value);
-  if((!w || !h) && originalImgSize){
-    const ratio = pct > 0 ? pct / 100 : 1;
-    if(!w) w = Math.round(originalImgSize.width * ratio);
-    if(!h) h = Math.round(originalImgSize.height * ratio);
+  html += `</div>`;
+  if (isLast) {
+    html += `<div style="text-align:center;font-size:11px;color:var(--gray);margin-top:6px;">Vous pouvez ne rien ajouter</div>`;
   }
-  let optsParts = [];
-  if(w && h) optsParts.push(`${w}x${h}`);
-  if(align) optsParts.push(align);
-  const opts = optsParts.join('|');
-  let style = 'max-width:100%;';
-  if(align === 'float-left') style += 'float:left;margin:4px 10px 4px 0;';
-  else if(align === 'float-right') style += 'float:right;margin:4px 0 4px 10px;';
-  else if(align === 'center') style += 'display:block;margin:6px auto;';
-  if(w && h) style += `width:${w}px;height:${h}px;`;
-  const dataOpts = opts ? ` data-bb-opts="${opts.replace(/"/g,'&quot;')}"` : '';
-  insertHTMLAtCursor(`<img src="${url}" style="${style}"${dataOpts}>`);
-  document.getElementById('imgUrl').value=''; document.getElementById('imgAlign').value='';
-  document.getElementById('imgW').value=''; document.getElementById('imgH').value='';
-  document.getElementById('imgPct').value='';
-  closeAllPopovers();
-});
-
-// Vidéo
-const panelVideo = document.getElementById('panelVideo');
-togglePopover(document.getElementById('bVideo'), panelVideo);
-document.getElementById('videoConfirm').addEventListener('click', ()=>{
-  const url = document.getElementById('videoUrl').value.trim();
-  if(!url) return;
-  insertHTMLAtCursor(`<video controls src="${url}" style="max-width:100%;"></video>`);
-  document.getElementById('videoUrl').value='';
-  closeAllPopovers();
-});
-
-// Emoji
-const panelEmoji = document.getElementById('panelEmoji');
-const emojiBtn = document.getElementById('emojiBtn');
-if(emojiBtn && panelEmoji){
-  emojiBtn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    restoreSelection();
-    const willOpen = !panelEmoji.classList.contains('open');
-    closeAllPopovers();
-    if(willOpen){
-      panelEmoji.classList.add('open');
-      buildEmojiGrid();
-      emojiGrid.classList.add('open');
-    }
-  });
-  panelEmoji.addEventListener('click', (e)=> e.stopPropagation());
+  
+  body.innerHTML = html;
 }
 
-// Profil
-const panelProfil = document.getElementById('panelProfil');
-togglePopover(document.getElementById('bProfil'), panelProfil);
-document.getElementById('profilConfirm').addEventListener('click', ()=>{
-  const name = document.getElementById('profilName').value.trim();
-  if(!name) return;
-  insertHTMLAtCursor(`<span class="bb-profil" contenteditable="false">${name}</span>&nbsp;`);
-  document.getElementById('profilName').value='';
-  closeAllPopovers();
-});
-
-// Spoiler
-const panelSpoiler = document.getElementById('panelSpoiler');
-togglePopover(document.getElementById('bSpoiler'), panelSpoiler);
-document.getElementById('spoilerConfirm').addEventListener('click', ()=>{
-  const closed = document.getElementById('spoilerClosed').value.trim() || 'Afficher le spoiler';
-  const open = document.getElementById('spoilerOpen').value.trim() || 'Masquer le spoiler';
-  const body = hasSelection() ? getSelectionHTML() : "entrer le contenu du spoiler ici";
-  insertHTMLAtCursor(`<div class="bb-spoiler-block" data-closed="${closed.replace(/"/g,'&quot;')}" data-open="${open.replace(/"/g,'&quot;')}"><div class="bb-spoiler-label" contenteditable="false">🔒 spoiler — replié : "${closed}" / déplié : "${open}"</div><div class="bb-spoiler-body" contenteditable="true">${body}</div></div><div><br></div>`);
-  closeAllPopovers();
-});
-
-// Barre de progression
-const panelProgress = document.getElementById('panelProgress');
-togglePopover(document.getElementById('bProgress'), panelProgress);
-document.getElementById('progConfirm').addEventListener('click', ()=>{
-  let pct = Math.max(0, Math.min(100, parseInt(document.getElementById('progPct').value,10) || 0));
-  const title = document.getElementById('progTitle').value.trim();
-  insertHTMLAtCursor(`<div class="bb-progress-block" data-pct="${pct}"><div class="bb-progress-outer"><div class="bb-progress-inner" contenteditable="true" style="width:${pct}%">${title}</div></div></div><div><br></div>`);
-  document.getElementById('progTitle').value='';
-  closeAllPopovers();
-});
-
-const panelCode = document.getElementById('panelCode');
-if(panelCode){
-  togglePopover(document.getElementById('bCode'), panelCode);
-}
-const codeLang = document.getElementById('codeLang');
-const codeText = document.getElementById('codeText');
-function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function highlightCode(lang, code){
-  const escaped = escapeHtml(code);
-  const strings = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
-  const numbers = /\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b/g;
-  let highlighted = escaped;
-  if(lang === 'html'){
-    highlighted = highlighted.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
-    highlighted = highlighted.replace(/(&lt;\/)?([a-zA-Z][a-zA-Z0-9:-]*)([^&]*?)(\/?)&gt;/g, (m,close,tag,attrs,slash)=>{
-      let result = `${close || ''}<span class="token-tag">${tag}</span>`;
-      if(attrs){
-        result += attrs.replace(/([a-zA-Z-:]+)(\s*=\s*)("[^"]*"|'[^']*')?/g, (mm,name,eq,value)=>{
-          let out = `<span class="token-attr-name">${name}</span>`;
-          if(eq) out += eq;
-          if(value) out += `<span class="token-attr-value">${value}</span>`;
-          return out;
-        });
-      }
-      return `&lt;${result}${slash||''}&gt;`;
-    });
-    return highlighted;
-  }
-  if(lang === 'bash' || lang === 'python' || lang === 'pl'){
-    highlighted = highlighted.replace(/(#.*)$/gm, '<span class="token-comment">$1</span>');
-    highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
-    highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
-    highlighted = highlighted.replace(/\$(?:[A-Za-z_][A-Za-z0-9_]*)/g, '<span class="token-variable">$&</span>');
-    highlighted = highlighted.replace(/\b(?:def|class|import|from|as|return|if|elif|else|for|while|try|except|finally|with|print|in|and|or|not|is|None|True|False|pass|break|continue|lambda|self|sub|use|my|package|elsif|unless|echo|fi|then|do|done|function|case|esac|shift|export)\b/g, '<span class="token-keyword">$&</span>');
-    return highlighted;
-  }
-  if(lang === 'c' || lang === 'h'){
-    highlighted = highlighted.replace(/(\/\*[\s\S]*?\*\/|\/\/.*$)/gm, '<span class="token-comment">$1</span>');
-    highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
-    highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
-    highlighted = highlighted.replace(/\b(?:int|char|short|long|float|double|void|unsigned|signed|const|static|struct|union|enum|typedef|return|if|else|for|while|do|switch|case|break|continue|sizeof|volatile|register|extern|goto)\b/g, '<span class="token-keyword">$&</span>');
-    highlighted = highlighted.replace(/\b(?:int|char|short|long|float|double|void)\b/g, '<span class="token-type">$&</span>');
-    return highlighted;
-  }
-  highlighted = highlighted.replace(strings, '<span class="token-string">$1</span>');
-  highlighted = highlighted.replace(numbers, '<span class="token-number">$1</span>');
-  highlighted = highlighted.replace(/\b(?:function|var|let|const|return|if|else|for|while|switch|case|break|continue|import|from|export|class|new|try|catch|finally|throw)\b/g, '<span class="token-keyword">$&</span>');
-  return highlighted;
+function selectWizard(key, id) {
+  wizardChoices[key] = id;
+  renderWizard();
 }
 
-document.getElementById('codeConfirm').addEventListener('click', ()=>{
-  const lang = codeLang ? codeLang.value : '';
-  const content = codeText ? codeText.value.trim() : '';
-  if(!content) return;
-  const highlighted = highlightCode(lang, content);
-  const langClass = lang ? ` language-${lang}` : '';
-  insertHTMLAtCursor(`<pre class="bb-code${langClass}"><code contenteditable="true">${highlighted}</code></pre><div><br></div>`);
-  if(codeText) codeText.value = '';
-  if(codeLang) codeLang.value = '';
-  closeAllPopovers();
-});
-
-document.getElementById('bQuote').addEventListener('click', ()=>{
-  const author = prompt("Auteur de la citation (facultatif) :", "") || "";
-  restoreSelection();
-  const body = hasSelection() ? getSelectionHTML() : "entrer la citation ici";
-  const label = author ? `<div class="q-author">${author} a écrit :</div>` : '';
-  insertHTMLAtCursor(`<blockquote class="bb-quote"${author?` data-author="${author.replace(/"/g,'&quot;')}"`:''}>${label}<div class="q-body" contenteditable="true">${body}</div></blockquote><div><br></div>`);
-});
-
-/* ---------- Emojis ---------- */
-const emojiGrid = document.getElementById('emojiGrid');
-buildEmojiGrid();
-function buildEmojiGrid(){
-  emojiGrid.innerHTML = '';
-  EMOJIS.slice().reverse().forEach(([code,val], idx)=>{
-    const b = document.createElement('button');
-    b.title = code || val;
-    if(isUrl(val)){
-      const img = document.createElement('img');
-      img.src = val; img.alt = code || val; img.style.width = '22px'; img.style.height = '22px'; img.style.display = 'block';
-      b.appendChild(img);
-    } else {
-      b.textContent = val; b.style.fontSize = '18px';
-    }
-    b.addEventListener('click', ()=>{
-      if(isUrl(val)) insertHTMLAtCursor(` <img src="${val}" style="vertical-align:middle;" data-emoji-code="${code||''}" contenteditable="false"> `);
-      else insertHTMLAtCursor(` ${val} `);
-      closeAllPopovers();
-    });
-    emojiGrid.appendChild(b);
-  });
+function toggleExtra(id) {
+  if (wizardChoices[id]) delete wizardChoices[id];
+  else wizardChoices[id] = true;
+  renderWizard();
 }
 
-emojiGrid.addEventListener('click', (e)=> e.stopPropagation());
-
-/* ---------- Compteur de mots ---------- */
-const wordCount = document.getElementById('wordCount');
-function updateCount(){
-  const words = editor.innerText.trim().split(/\s+/).filter(Boolean);
-  wordCount.textContent = words.length + ' mots';
-}
-editor.addEventListener('input', updateCount);
-updateCount();
-updateToolbarState();
-
-/* ---------- Vider la page ---------- */
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  if(confirm("Vider toute la page ?")){
-    editor.innerHTML = '<div><br></div>';
-    updateCount();
-  }
-});
-
-/* ---------- Sérialiseur HTML -> BBCode ---------- */
-function nodeToBBCode(node){
-  if(node.nodeType === Node.TEXT_NODE) return node.textContent;
-  if(node.nodeType !== Node.ELEMENT_NODE) return '';
-
-  const tag = node.tagName;
-  if(tag === 'BR') return '\n';
-
-  const childrenBB = Array.from(node.childNodes).map(nodeToBBCode).join('');
-
-  switch(tag){
-    case 'STRONG': case 'B': return `[b]${childrenBB}[/b]`;
-    case 'EM': case 'I': return `[i]${childrenBB}[/i]`;
-    case 'U': return `[u]${childrenBB}[/u]`;
-    case 'S': case 'STRIKE': case 'DEL': return `[strike]${childrenBB}[/strike]`;
-    case 'SMALL': return `[small]${childrenBB}[/small]`;
-    case 'FONT': {
-      let r = childrenBB;
-      const color = normalizeColor(node.getAttribute('color')||'');
-      const face = node.getAttribute('face')||'';
-      if(color){
-        if(COLOR_MAP_REV[color]) r = `[${COLOR_MAP_REV[color]}]${r}[/${COLOR_MAP_REV[color]}]`;
-        else r = `[color=${color}]${r}[/color]`;
-      }
-      if(face && FONT_MAP_REV[face]) r = `[${FONT_MAP_REV[face]}]${r}[/${FONT_MAP_REV[face]}]`;
-      return r;
-    }
-    case 'A': {
-      const href = node.getAttribute('href')||'';
-      return `[url=${href}]${childrenBB || href}[/url]`;
-    }
-    case 'IMG': {
-      const emojiCode = node.getAttribute('data-emoji-code');
-      if(emojiCode){
-        return ` ${emojiCode} `;
-      }
-      const opts = node.getAttribute('data-bb-opts') || '';
-      const srcv = node.getAttribute('src')||'';
-      return opts ? `[img=${opts}]${srcv}[/img]` : `[img]${srcv}[/img]`;
-    }
-    case 'VIDEO': {
-      const srcv = node.getAttribute('src') || (node.querySelector('source') ? node.querySelector('source').getAttribute('src') : '');
-      return `[video]${srcv}[/video]`;
-    }
-    case 'PRE': {
-      if(node.classList.contains('bb-code')){
-        const langMatch = node.className.match(/language-([a-zA-Z0-9_-]+)/);
-        const lang = langMatch ? langMatch[1] : '';
-        const text = node.textContent.replace(/\r/g,'');
-        return lang ? `[code=${lang}]${text}[/code]\n` : `[code]${text}[/code]\n`;
-      }
-      return childrenBB;
-    }
-    case 'BLOCKQUOTE': {
-      if(node.classList.contains('bb-quote')){
-        const author = node.getAttribute('data-author') || '';
-        const body = node.querySelector('.q-body');
-        const bodyBB = body ? Array.from(body.childNodes).map(nodeToBBCode).join('') : childrenBB;
-        return (author ? `[quote=${author}]${bodyBB}[/quote]` : `[quote]${bodyBB}[/quote]`) + '\n';
-      }
-      return childrenBB;
-    }
-    case 'SPAN': {
-      if(node.classList.contains('bb-profil')) return `[profil]${node.textContent}[/profil]`;
-      let r = childrenBB;
-      const style = node.getAttribute('style') || '';
-      if(/color\s*:/.test(style)){
-        const m = style.match(/color\s*:\s*([^;]+)/);
-        const hex = m ? normalizeColor(m[1]) : '';
-        if(hex){
-          if(COLOR_MAP_REV[hex]) r = `[${COLOR_MAP_REV[hex]}]${r}[/${COLOR_MAP_REV[hex]}]`;
-          else r = `[color=${hex}]${r}[/color]`;
-        }
-      }
-      if(/font-size/.test(style)) r = `[big]${r}[/big]`;
-      if(/font-family/.test(style)){
-        const m = style.match(/font-family\s*:\s*([^;]+)/);
-        const fam = m ? m[1].trim() : '';
-        if(FONT_MAP_REV[fam]) r = `[${FONT_MAP_REV[fam]}]${r}[/${FONT_MAP_REV[fam]}]`;
-      }
-      return r;
-    }
-    case 'DIV': case 'P': {
-      if(node.classList.contains('bb-spoiler-block')){
-        const closed = node.getAttribute('data-closed') || 'Afficher';
-        const open = node.getAttribute('data-open') || 'Masquer';
-        const body = node.querySelector('.bb-spoiler-body');
-        const bodyBB = body ? Array.from(body.childNodes).map(nodeToBBCode).join('') : '';
-        return `[spoiler=${closed}|${open}]${bodyBB}[/spoiler]\n`;
-      }
-      if(node.classList.contains('bb-progress-block')){
-        const pct = node.getAttribute('data-pct') || '0';
-        const inner = node.querySelector('.bb-progress-inner');
-        const title = inner ? inner.textContent : '';
-        return `[progress=${pct}]${title}[/progress]\n`;
-      }
-      const align = (node.style && node.style.textAlign) || '';
-      let r = childrenBB;
-      if(align === 'center') r = `[center]${r}[/center]`;
-      else if(align === 'justify') r = `[justify]${r}[/justify]`;
-      return r + '\n';
-    }
-    default:
-      return childrenBB;
+function wizardNext() {
+  if (wizardIndex < wizardSteps.length - 1) {
+    wizardIndex++;
+    renderWizard();
   }
 }
 
-function exportToBBCode(){
-  const topNodes = Array.from(editor.childNodes).filter(n=>
-    !(n.nodeType === Node.TEXT_NODE && n.textContent.trim() === '')
-  );
-  let out = topNodes.map(nodeToBBCode).join('');
-  out = out.replace(/\n{3,}/g, '\n\n').replace(/^[ \t\n]+|[ \t\n]+$/g, '');
-  return out;
+function wizardPrev() {
+  if (wizardIndex > 0) {
+    wizardIndex--;
+    renderWizard();
+  }
 }
 
-/* ---------- Importateur BBCode -> HTML ---------- */
-function parseInlineBBCode(str){
-  let t = str;
-
-  t = t.replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, (m,u,txt)=> `<a href="${u}" target="_blank">${txt||u}</a>`);
-  t = t.replace(/\[url\]([\s\S]*?)\[\/url\]/gi, (m,u)=> `<a href="${u}" target="_blank">${u}</a>`);
-
-  Object.keys(FONT_MAP).forEach(f=>{
-    const re = new RegExp(`\\[${f}\\]([\\s\\S]*?)\\[\\/${f}\\]`,'gi');
-    t = t.replace(re, (m,c)=> `<font face="${FONT_MAP[f]}">${c}</font>`);
-  });
-
-  Object.keys(COLOR_MAP).forEach(c=>{
-    const re = new RegExp(`\\[${c}\\]([\\s\\S]*?)\\[\\/${c}\\]`,'gi');
-    t = t.replace(re, (m,txt)=> `<font color="${COLOR_MAP[c]}">${txt}</font>`);
-  });
-
-  t = t.replace(/\[color=(#[0-9a-fA-F]{3,8})\]([\s\S]*?)\[\/color\]/gi, (m,hex,txt)=> `<font color="${hex}">${txt}</font>`);
-
-  t = t.replace(/\[img(?:=([^\]]+))?\]([\s\S]*?)\[\/img\]/gi, (m,opts,url)=>{
-    let style = 'max-width:100%;';
-    if(opts){
-      opts.split('|').map(s=>s.trim()).forEach(p=>{
-        if(p==='float-left') style += 'float:left;margin:4px 10px 4px 0;';
-        else if(p==='float-right') style += 'float:right;margin:4px 0 4px 10px;';
-        else if(p==='center') style += 'display:block;margin:6px auto;';
-        else if(/^\d+x\d+$/i.test(p)){ const [w,h]=p.split('x'); style += `width:${w}px;height:${h}px;`; }
+function computeWizardTotal() {
+  let total = wizardMenu.price;
+  wizardSteps.forEach(step => {
+    if (!step.extras && wizardChoices[step.key]) {
+      const opt = step.options.find(o => o.id === wizardChoices[step.key]);
+      if (opt) total += opt.price || 0;
+    }
+    if (step.extras) {
+      step.options.forEach(o => {
+        if (wizardChoices[o.id]) total += o.price;
       });
     }
-    const dataOpts = opts ? ` data-bb-opts="${opts.replace(/"/g,'&quot;')}"` : '';
-    return `<img src="${url.trim()}" style="${style}"${dataOpts}>`;
   });
-
-  t = t.replace(/\[video\]([\s\S]*?)\[\/video\]/gi, (m,url)=> `<video controls src="${url.trim()}" style="max-width:100%;"></video>`);
-
-  t = t.replace(/\[profil\]([\s\S]*?)\[\/profil\]/gi, (m,txt)=> `<span class="bb-profil" contenteditable="false">${txt}</span>&nbsp;`);
-
-  t = t.replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '<strong>$1</strong>');
-  t = t.replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<em>$1</em>');
-  t = t.replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '<u>$1</u>');
-  t = t.replace(/\[strike\]([\s\S]*?)\[\/strike\]/gi, '<s>$1</s>');
-  t = t.replace(/\[small\]([\s\S]*?)\[\/small\]/gi, '<small>$1</small>');
-  t = t.replace(/\[big\]([\s\S]*?)\[\/big\]/gi, '<span style="font-size:1.6em">$1</span>');
-
-  EMOJIS.forEach(([code,val])=>{
-    const esc = (code || val).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if(isUrl(val)){
-      const imgTag = `<img src="${val}" style="width:22px;height:22px;vertical-align:middle;" data-emoji-code="${code||''}">`;
-      t = t.replace(new RegExp(esc,'g'), imgTag);
-    } else {
-      t = t.replace(new RegExp(esc,'g'), val);
-    }
-  });
-
-  return t;
+  return total;
 }
 
-function bbcodeToHTML(raw){
-  let text = raw.replace(/\r\n/g,'\n');
-  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-  const blocks = [];
-  function stash(html){ const token = '\u0001B'+blocks.length+'\u0001'; blocks.push(html); return token; }
-
-  text = text.replace(/\[code(?:=([a-zA-Z0-9_-]+))?\]([\s\S]*?)\[\/code\]/gi, (m,lang,c)=>{
-    const langClass = lang ? ` language-${lang}` : '';
-    const codeValue = c.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return stash(`<pre class="bb-code${langClass}"><code contenteditable="true">${codeValue}</code></pre>`);
-  });
-
-  text = text.replace(/\[quote(?:=([^\]]*))?\]([\s\S]*?)\[\/quote\]/gi, (m,author,content)=>{
-    const body = parseInlineBBCode(content).replace(/\n/g,'<br>');
-    const label = author ? `<div class="q-author">${author} a écrit :</div>` : '';
-    const authorAttr = author ? ` data-author="${author.replace(/"/g,'&quot;')}"` : '';
-    return stash(`<blockquote class="bb-quote"${authorAttr}>${label}<div class="q-body" contenteditable="true">${body}</div></blockquote>`);
-  });
-
-  text = text.replace(/\[spoiler(?:=([^\]]*))?\]([\s\S]*?)\[\/spoiler\]/gi, (m,opts,content)=>{
-    let closed='Afficher le spoiler', open='Masquer le spoiler';
-    if(opts){ const p = opts.split('|'); if(p[0]) closed=p[0].trim(); if(p[1]) open=p[1].trim(); }
-    const body = parseInlineBBCode(content).replace(/\n/g,'<br>');
-    return stash(`<div class="bb-spoiler-block" data-closed="${closed.replace(/"/g,'&quot;')}" data-open="${open.replace(/"/g,'&quot;')}"><div class="bb-spoiler-label" contenteditable="false">🔒 spoiler — replié : "${closed}" / déplié : "${open}"</div><div class="bb-spoiler-body" contenteditable="true">${body}</div></div>`);
-  });
-
-  text = text.replace(/\[progress=(\d+)\]([\s\S]*?)\[\/progress\]/gi, (m,pct,title)=>{
-    const p = Math.max(0, Math.min(100, parseInt(pct,10) || 0));
-    return stash(`<div class="bb-progress-block" data-pct="${p}"><div class="bb-progress-outer"><div class="bb-progress-inner" contenteditable="true" style="width:${p}%">${parseInlineBBCode(title)}</div></div></div>`);
-  });
-
-  text = text.replace(/\[center\]([\s\S]*?)\[\/center\]/gi, (m,c)=>
-    stash(`<div style="text-align:center">${parseInlineBBCode(c).replace(/\n/g,'<br>')}</div>`)
-  );
-  text = text.replace(/\[justify\]([\s\S]*?)\[\/justify\]/gi, (m,c)=>
-    stash(`<div style="text-align:justify">${parseInlineBBCode(c).replace(/\n/g,'<br>')}</div>`)
-  );
-
-  text = parseInlineBBCode(text);
-
-  const lines = text.split('\n');
-  const htmlLines = lines.map(line=>{
-    const trimmed = line.trim();
-    const blockMatch = trimmed.match(/^\u0001B(\d+)\u0001$/);
-    if(blockMatch) return blocks[parseInt(blockMatch[1],10)];
-    const withBlocks = line.replace(/\u0001B(\d+)\u0001/g, (mm,i)=> blocks[parseInt(i,10)]);
-    return `<div>${withBlocks || '<br>'}</div>`;
-  });
-  return htmlLines.join('');
+function commitWizard() {
+  const menu = {id:'menu_'+Date.now(), name:wizardMenu.name+' (perso)', price:computeWizardTotal(), img:wizardMenu.img};
+  addToCart(menu);
+  document.getElementById('overlay').classList.remove('show');
+  pulseCartBar();
 }
 
-/* ---------- Modal d'import ---------- */
-const importOverlay = document.getElementById('importOverlay');
-const importText = document.getElementById('importText');
-document.getElementById('importBtn').addEventListener('click', ()=>{
-  closeAllPopovers();
-  importOverlay.classList.add('open');
-  importText.focus();
-});
-document.getElementById('importCancel').addEventListener('click', ()=> importOverlay.classList.remove('open'));
-importOverlay.addEventListener('click', (e)=>{ if(e.target === importOverlay) importOverlay.classList.remove('open'); });
-document.getElementById('importConfirm').addEventListener('click', ()=>{
-  const raw = importText.value;
-  if(!raw.trim()) return;
-  editor.innerHTML = bbcodeToHTML(raw);
-  importOverlay.classList.remove('open');
-  importText.value = '';
-  updateCount();
-  updateToolbarState();
-});
-
-/* ---------- Export ---------- */
-const exportWrap = document.getElementById('exportWrap');
-const exportText = document.getElementById('exportText');
-const copyBtn = document.getElementById('copyBtn');
-const copyMsg = document.getElementById('copyMsg');
-
-document.getElementById('exportBtn').addEventListener('click', ()=>{
-  exportText.value = exportToBBCode();
-  exportWrap.classList.add('open');
-  copyBtn.style.display = 'inline-block';
-  exportWrap.scrollIntoView({behavior:'smooth', block:'nearest'});
-});
-
-copyBtn.addEventListener('click', async ()=>{
-  try{ await navigator.clipboard.writeText(exportText.value); copyMsg.textContent = 'Copié ✓'; }
-  catch(e){ exportText.select(); document.execCommand('copy'); copyMsg.textContent = 'Copié ✓'; }
-  setTimeout(()=> copyMsg.textContent='', 1800);
-});
-
-/* ---------- Clic droit : modification ---------- */
-const editPanel = document.getElementById('editPanel');
-editPanel.addEventListener('click', (e)=> e.stopPropagation());
-
-function esc(str){ return String(str).replace(/"/g,'&quot;'); }
-function closeEditPanel(){ editPanel.classList.remove('open'); editPanel.innerHTML=''; }
-
-editor.addEventListener('contextmenu', (e)=>{
-  let t = e.target;
-  if(t.nodeType === Node.TEXT_NODE) t = t.parentElement;
-  const el = t ? t.closest('img, video, a, .bb-profil, .bb-quote, .bb-spoiler-block, .bb-progress-block') : null;
-  if(!el) return;
-  e.preventDefault();
-  openEditMenu(el, e.clientX, e.clientY);
-});
-
-function openEditMenu(el, x, y){
-  closeAllPopovers();
-  const tag = el.tagName;
-  let html = '';
-
-  if(tag === 'IMG'){
-    html = `<label>Adresse de l'image</label><input type="text" id="editUrl" value="${esc(el.getAttribute('src'))}">
-      <label>Options (float-left, float-right, center, LxH, LxH|center…)</label><input type="text" id="editOpts" value="${esc(el.getAttribute('data-bb-opts')||'')}">`;
-  } else if(tag === 'VIDEO'){
-    html = `<label>Adresse de la vidéo</label><input type="text" id="editUrl" value="${esc(el.getAttribute('src'))}">`;
-  } else if(tag === 'A'){
-    html = `<label>Adresse du lien</label><input type="text" id="editUrl" value="${esc(el.getAttribute('href'))}">
-      <label>Texte affiché</label><input type="text" id="editText" value="${esc(el.textContent)}">`;
-  } else if(el.classList.contains('bb-profil')){
-    html = `<label>Nom du profil</label><input type="text" id="editText" value="${esc(el.textContent)}">`;
-  } else if(el.classList.contains('bb-quote')){
-    html = `<label>Auteur (facultatif)</label><input type="text" id="editAuthor" value="${esc(el.getAttribute('data-author')||'')}">`;
-  } else if(el.classList.contains('bb-spoiler-block')){
-    html = `<label>Texte du bouton replié</label><input type="text" id="editClosed" value="${esc(el.getAttribute('data-closed')||'')}">
-      <label>Texte du bouton déplié</label><input type="text" id="editOpen" value="${esc(el.getAttribute('data-open')||'')}">`;
-  } else if(el.classList.contains('bb-progress-block')){
-    const inner = el.querySelector('.bb-progress-inner');
-    html = `<label>Pourcentage (0-100)</label><input type="number" id="editPct" min="0" max="100" value="${esc(el.getAttribute('data-pct')||'0')}">
-      <label>Titre</label><input type="text" id="editTitle" value="${esc(inner ? inner.textContent : '')}">`;
+// ==================== PANIER ====================
+function addToCart(p, qty = 1) {
+  const existing = cart.find(item => item.id === p.id);
+  if (existing) {
+    existing.qty += qty;
+    existing.total = existing.qty * existing.price;
   } else {
-    return;
+    cart.push({...p, qty:qty, total:p.price * qty});
   }
-
-  html += `<button class="confirm" id="editSave">Mettre à jour</button>
-    <button class="confirm" id="editDelete" style="background:#a02222;color:#fff;margin-top:6px;">Supprimer</button>`;
-
-  editPanel.innerHTML = html;
-  editPanel.style.left = Math.min(x, window.innerWidth-260) + 'px';
-  editPanel.style.top = Math.min(y, window.innerHeight-280) + 'px';
-  editPanel.classList.add('open');
-
-  editPanel.querySelectorAll('input').forEach(inp=>{
-    inp.addEventListener('keydown', (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); document.getElementById('editSave').click(); } });
-  });
-  document.getElementById('editSave').addEventListener('click', ()=>{ applyEdit(el, tag); closeEditPanel(); });
-  document.getElementById('editDelete').addEventListener('click', ()=>{ el.remove(); closeEditPanel(); updateCount(); });
+  renderCartUI();
 }
 
-function applyEdit(el, tag){
-  if(tag === 'IMG'){
-    const url = document.getElementById('editUrl').value.trim();
-    const opts = document.getElementById('editOpts').value.trim();
-    if(url) el.setAttribute('src', url);
-    let style = 'max-width:100%;';
-    opts.split('|').map(s=>s.trim()).filter(Boolean).forEach(p=>{
-      if(p==='float-left') style += 'float:left;margin:4px 10px 4px 0;';
-      else if(p==='float-right') style += 'float:right;margin:4px 0 4px 10px;';
-      else if(p==='center') style += 'display:block;margin:6px auto;';
-      else if(/^\d+x\d+$/i.test(p)){ const [w,h]=p.split('x'); style += `width:${w}px;height:${h}px;`; }
-    });
-    el.setAttribute('style', style);
-    if(opts) el.setAttribute('data-bb-opts', opts); else el.removeAttribute('data-bb-opts');
-  } else if(tag === 'VIDEO'){
-    const url = document.getElementById('editUrl').value.trim();
-    if(url) el.setAttribute('src', url);
-  } else if(tag === 'A'){
-    const url = document.getElementById('editUrl').value.trim();
-    const text = document.getElementById('editText').value;
-    if(url) el.setAttribute('href', url);
-    el.textContent = text || url;
-  } else if(el.classList.contains('bb-profil')){
-    el.textContent = document.getElementById('editText').value;
-  } else if(el.classList.contains('bb-quote')){
-    const author = document.getElementById('editAuthor').value.trim();
-    let label = el.querySelector('.q-author');
-    if(author){
-      el.setAttribute('data-author', author);
-      if(!label){ label = document.createElement('div'); label.className='q-author'; el.insertBefore(label, el.firstChild); }
-      label.textContent = author + ' a écrit :';
-    } else {
-      el.removeAttribute('data-author');
-      if(label) label.remove();
+function renderCartUI() {
+  const totalQty = cart.reduce((s,i) => s + i.qty, 0);
+  const total = cart.reduce((s,i) => s + i.total, 0);
+  
+  document.getElementById('cart-badge').textContent = totalQty;
+  document.getElementById('cartbar-count').textContent = totalQty;
+  document.getElementById('cartbar-label').textContent = totalQty > 1 ? 'articles' : 'article';
+  document.getElementById('cartbar-total').textContent = fmt(total);
+  document.getElementById('cartbar').classList.toggle('show', totalQty > 0);
+  
+  const itemsEl = document.getElementById('drawer-items');
+  if (cart.length === 0) {
+    itemsEl.innerHTML = `<div class="empty-cart"><span class="big">🛒</span>Votre panier est vide</div>`;
+  } else {
+    itemsEl.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <div class="ci-img">${item.img ? imgHTML(item.img, item.name) : '<span style="font-size:24px;">🍔</span>'}</div>
+        <div class="info">
+          <div class="name">${item.name}</div>
+          <div class="line-bottom">
+            <div class="qty-ctrl">
+              <button onclick="changeQty('${item.id}',-1)">−</button>
+              <span>${item.qty}</span>
+              <button onclick="changeQty('${item.id}',1)">+</button>
+            </div>
+            <span class="item-price">${fmt(item.total)}</span>
+          </div>
+          <button class="remove-btn" onclick="removeItem('${item.id}')">Retirer</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  document.getElementById('sub-total').textContent = fmt(total);
+  document.getElementById('grand-total').textContent = fmt(total);
+  document.getElementById('drawer-checkout').disabled = cart.length === 0;
+}
+
+function changeQty(id, delta) {
+  const item = cart.find(i => i.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    cart = cart.filter(i => i.id !== id);
+  } else {
+    item.total = item.qty * item.price;
+  }
+  renderCartUI();
+}
+
+function removeItem(id) {
+  cart = cart.filter(i => i.id !== id);
+  renderCartUI();
+}
+
+function pulseCartBar() {
+  const bar = document.getElementById('cartbar');
+  bar.style.transform = 'scale(1.02)';
+  setTimeout(() => bar.style.transform = 'scale(1)', 150);
+}
+
+// ==================== DRAWER ====================
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-scrim').classList.add('show');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-scrim').classList.remove('show');
+}
+
+document.getElementById('cart-btn').onclick = openDrawer;
+document.getElementById('cartbar').onclick = openDrawer;
+document.getElementById('drawer-close').onclick = closeDrawer;
+document.getElementById('drawer-continue').onclick = closeDrawer;
+document.getElementById('drawer-scrim').onclick = closeDrawer;
+
+// ==================== EXPORT JSON ====================
+function exportJSON() {
+  const total = cart.reduce((s,i) => s + i.total, 0);
+  const num = 'CMD-' + String(100 + Math.floor(Math.random() * 900));
+  
+  const jsonData = {
+    commande: {
+      numero: num,
+      date: new Date().toISOString(),
+      type: orderType === 'sur_place' ? 'Sur place' : 'À emporter',
+      total: total,
+      articles: cart.map(i => ({
+        nom: i.name,
+        quantite: i.qty,
+        prix_unitaire: i.price,
+        total: i.total
+      }))
     }
-  } else if(el.classList.contains('bb-spoiler-block')){
-    const closed = document.getElementById('editClosed').value.trim() || 'Afficher le spoiler';
-    const open = document.getElementById('editOpen').value.trim() || 'Masquer le spoiler';
-    el.setAttribute('data-closed', closed);
-    el.setAttribute('data-open', open);
-    const label = el.querySelector('.bb-spoiler-label');
-    if(label) label.textContent = `🔒 spoiler — replié : "${closed}" / déplié : "${open}"`;
-  } else if(el.classList.contains('bb-progress-block')){
-    const pct = Math.max(0, Math.min(100, parseInt(document.getElementById('editPct').value,10) || 0));
-    const title = document.getElementById('editTitle').value;
-    el.setAttribute('data-pct', pct);
-    const inner = el.querySelector('.bb-progress-inner');
-    if(inner){ inner.style.width = pct+'%'; inner.textContent = title; }
-  }
-  updateCount();
-}
-</script>
-
-<script>
-// Configuration du téléversement ImgBB
-const imgPctField = document.getElementById('imgPct');
-const imgWField = document.getElementById('imgW');
-const imgHField = document.getElementById('imgH');
-const imgUrlField = document.getElementById('imgUrl');
-const imgCancelBtn = document.getElementById('imgCancel');
-const videoUrlField = document.getElementById('videoUrl');
-let originalImgSize = null;
-
-const IMGBB_API_KEY = '89cdb1f114022cbc5f0dd465a83e83b5';
-
-async function uploadImageToImgbb(file){
-  if(!file) throw new Error('Aucun fichier');
-  const reader = new FileReader();
-  const base64 = await new Promise((res, rej)=>{
-    reader.onload = ()=>{
-      const dataUrl = String(reader.result || '');
-      const m = dataUrl.match(/^data:.*;base64,(.*)$/);
-      if(m) res(m[1]); else rej(new Error('Impossible de lire le fichier'));
-    };
-    reader.onerror = ()=> rej(new Error('Erreur de lecture du fichier'));
-    reader.readAsDataURL(file);
-  });
-
-  const form = new FormData();
-  form.append('image', base64);
-
-  const url = 'https://api.imgbb.com/1/upload?key=' + encodeURIComponent(IMGBB_API_KEY);
-  const resp = await fetch(url, { method: 'POST', body: form });
-  if(!resp.ok) throw new Error('Échec du téléversement ('+resp.status+')');
-  const j = await resp.json();
-  if(!j || !j.data) throw new Error('Réponse invalide du service');
-  return j.data.url || j.data.display_url || j.data.image?.url;
-}
-
-const imgFileInput = document.getElementById('imgFile');
-const imgPreviewWrapper = document.getElementById('imgPreviewWrapper');
-const imgPreview = document.getElementById('imgPreview');
-if(imgFileInput){
-  imgFileInput.addEventListener('change', (e)=>{
-    const f = e.target.files && e.target.files[0];
-    if(f) {
-      originalImgSize = null;
-      const reader = new FileReader();
-      reader.onload = ()=>{ updateImagePreview(String(reader.result || '')); };
-      reader.readAsDataURL(f);
-    } else {
-      updateImagePreview('');
-    }
-  });
-}
-
-const imgUploadBtn = document.getElementById('imgUpload');
-if(imgUploadBtn){
-  imgUploadBtn.addEventListener('click', async ()=>{
-    const f = imgFileInput && imgFileInput.files && imgFileInput.files[0];
-    if(!f){ alert('Choisissez un fichier image à téléverser.'); return; }
-    imgUploadBtn.disabled = true; imgUploadBtn.textContent = 'Téléversement...';
-    try{
-      const uploadedUrl = await uploadImageToImgbb(f);
-      if(uploadedUrl){
-        imgUrlField.value = uploadedUrl;
-        originalImgSize = null;
-        loadImageDimensions(uploadedUrl);
-        updateImagePreview(uploadedUrl);
-      } else {
-        alert('Téléversement terminé mais aucune URL retournée.');
-      }
-    }catch(err){
-      console.error(err);
-      alert('Erreur lors du téléversement : ' + (err.message || err));
-    }finally{
-      imgUploadBtn.disabled = false; imgUploadBtn.textContent = 'Téléverser';
-    }
-  });
-}
-
-if(imgPctField){
-  imgPctField.addEventListener('input', ()=>{
-    if(!originalImgSize && imgUrlField && imgUrlField.value) loadImageDimensions(imgUrlField.value.trim());
-    updateSizeFromPercent();
-  });
-}
-
-if(imgUrlField){
-  imgUrlField.addEventListener('change', ()=>{ const v = imgUrlField.value.trim(); if(v){ loadImageDimensions(v); updateImagePreview(v); } else updateImagePreview(''); });
-  imgUrlField.addEventListener('paste', ()=> setTimeout(()=>{ const v = imgUrlField.value.trim(); if(v){ loadImageDimensions(v); updateImagePreview(v); } else updateImagePreview(''); }, 50));
-}
-
-function updateImagePreview(src){
-  if(imgPreview && imgPreviewWrapper && src){
-    imgPreview.src = src;
-    imgPreviewWrapper.style.display = 'block';
-  } else if(imgPreviewWrapper){
-    imgPreviewWrapper.style.display = 'none';
-  }
-}
-
-const imgCancel = document.getElementById('imgCancel');
-function clearImagePanel(){
-  originalImgSize = null;
-  if(imgUrlField) imgUrlField.value = '';
-  if(imgWField) imgWField.value = '';
-  if(imgHField) imgHField.value = '';
-  if(imgPctField) imgPctField.value = '';
-  const imgAlign = document.getElementById('imgAlign');
-  if(imgAlign) imgAlign.value = '';
-  if(imgFileInput) imgFileInput.value = '';
-  updateImagePreview('');
-}
-if(imgCancel){
-  imgCancel.addEventListener('click', (e)=>{
-    e.preventDefault();
-    clearImagePanel();
-  });
-}
-
-function setOriginalImageSize(width, height){
-  originalImgSize = { width, height };
-  if(!imgWField.value && !imgHField.value){
-    imgWField.value = width;
-    imgHField.value = height;
-  }
-}
-
-function updateSizeFromPercent(){
-  const pct = parseFloat(imgPctField.value);
-  if(!originalImgSize || !pct || pct <= 0) return;
-  imgWField.value = Math.round(originalImgSize.width * pct / 100);
-  imgHField.value = Math.round(originalImgSize.height * pct / 100);
-}
-
-function loadImageDimensions(url){
-  if(!url) return;
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  image.onload = ()=>{
-    setOriginalImageSize(image.naturalWidth, image.naturalHeight);
-    if(imgPctField.value) updateSizeFromPercent();
   };
-  image.onerror = ()=>{ originalImgSize = null; };
-  image.src = url;
+  
+  // Télécharger le fichier JSON
+  const blob = new Blob([JSON.stringify(jsonData, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'commande.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  return jsonData;
 }
 
-function loadFileDimensions(dataUrl){
-  if(!dataUrl) return;
-  const image = new Image();
-  image.onload = ()=>{
-    setOriginalImageSize(image.naturalWidth, image.naturalHeight);
-    if(imgPctField.value) updateSizeFromPercent();
-  };
-  image.src = dataUrl;
+// ==================== VALIDATION COMMANDE ====================
+document.getElementById('drawer-checkout').onclick = () => {
+  if (cart.length === 0) return;
+  
+  // Exporter le JSON
+  const jsonData = exportJSON();
+  
+  // Afficher le ticket
+  const total = cart.reduce((s,i) => s + i.total, 0);
+  document.getElementById('receipt').innerHTML = `
+    <div class="r-title">🍔 McBORNE</div>
+    <div class="r-num">${jsonData.commande.numero}</div>
+    ${cart.map(i => `
+      <div class="r-line"><span>${i.qty}× ${i.name}</span><span>${fmt(i.total)}</span></div>
+    `).join('')}
+    <div class="r-total"><span>Total</span><span>${fmt(total)}</span></div>
+    <div class="r-type">${orderType === 'sur_place' ? '🍽️ Sur place' : '🥡 À emporter'}</div>
+  `;
+  
+  document.getElementById('json-status').textContent = '📄 Fichier commande.json téléchargé';
+  
+  closeDrawer();
+  document.getElementById('screen-confirm').classList.add('show');
+};
+
+// ==================== NOUVELLE COMMANDE ====================
+document.getElementById('confirm-new-btn').onclick = () => {
+  cart = [];
+  renderCartUI();
+  document.getElementById('screen-confirm').classList.remove('show');
+  document.getElementById('screen-welcome').style.display = 'flex';
+};
+
+// ==================== WELCOME ====================
+document.querySelectorAll('.choice-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    orderType = btn.dataset.type;
+    document.getElementById('order-type-btn').textContent = orderType === 'sur_place' ? '🍽️ Sur place' : '🥡 À emporter';
+    document.getElementById('screen-welcome').style.display = 'none';
+  });
+});
+
+document.getElementById('order-type-btn').addEventListener('click', () => {
+  orderType = orderType === 'sur_place' ? 'emporter' : 'sur_place';
+  document.getElementById('order-type-btn').textContent = orderType === 'sur_place' ? '🍽️ Sur place' : '🥡 À emporter';
+});
+
+// ==================== MODAL ====================
+document.getElementById('modal-close').onclick = () => {
+  document.getElementById('overlay').classList.remove('show');
+};
+document.getElementById('overlay').onclick = (e) => {
+  if (e.target === e.currentTarget) document.getElementById('overlay').classList.remove('show');
+};
+
+// ==================== UTILS ====================
+function fmt(n) {
+  return n.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
 }
+
+// ==================== INIT ====================
+renderCategories();
+renderCatalog();
+renderCartUI();
 </script>
 </body>
 </html>
