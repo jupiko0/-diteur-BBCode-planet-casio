@@ -67,6 +67,24 @@
   .header-spacer{flex:1 1 auto;}
   .cart-btn{position:relative;background:var(--mcdo-yellow);border:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;}
   .cart-btn .badge{position:absolute;top:-4px;right:-4px;background:var(--ink);color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--mcdo-red);}
+  .gear-btn{background:rgba(255,255,255,.16);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+  /* ---- Réglages GitHub ---- */
+  #settings-overlay{position:absolute;inset:0;background:rgba(20,12,6,.5);display:none;align-items:flex-end;justify-content:center;z-index:60;}
+  #settings-overlay.show{display:flex;}
+  #settings-modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-height:88%;overflow-y:auto;padding:20px;position:relative;animation:modalUp .22s ease;}
+  #settings-modal h3{font-size:16px;margin-bottom:4px;}
+  #settings-modal .s-desc{font-size:11.5px;color:var(--gray);line-height:1.5;margin-bottom:14px;}
+  #settings-modal label{font-size:11px;font-weight:800;color:var(--mcdo-red-dark);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;}
+  #settings-modal input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;font-size:13px;margin-bottom:6px;font-family:inherit;}
+  #settings-modal .s-note{font-size:10.5px;color:var(--gray);line-height:1.5;margin-bottom:14px;}
+  #settings-modal .s-note a{color:var(--mcdo-red-dark);}
+  #settings-save{width:100%;background:var(--mcdo-red);color:#fff;border:none;padding:14px;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:8px;}
+  #settings-clear{width:100%;background:none;border:none;color:var(--gray);font-size:11.5px;text-decoration:underline;cursor:pointer;}
+  #settings-status{font-size:11px;font-weight:700;margin-bottom:12px;padding:8px 10px;border-radius:10px;display:none;}
+  #settings-status.ok{display:block;background:#E9F7EC;color:var(--ok);}
+  #settings-status.err{display:block;background:#FCEBE9;color:var(--mcdo-red-dark);}
+  .sync-line{text-align:center;font-size:10.5px;color:rgba(255,255,255,.85);margin-top:10px;min-height:14px;}
 
   nav#cats{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:8px;padding:10px 12px;overflow-x:auto;z-index:5;}
   nav#cats::-webkit-scrollbar{display:none;}
@@ -266,6 +284,7 @@
           <div class="title">McBORNE</div>
           <button class="pill-ordertype" id="pill-ordertype">🍽️ Sur place</button>
           <div class="header-spacer"></div>
+          <button class="gear-btn" id="settings-btn" title="Réglages GitHub">⚙️</button>
           <button class="cart-btn" id="cart-btn">🛒<span class="badge" id="cart-badge">0</span></button>
         </header>
 
@@ -334,8 +353,24 @@
           <h1>Commande envoyée !</h1>
           <p class="lead">Merci, votre commande a été transmise en cuisine.</p>
           <div class="receipt" id="receipt"></div>
+          <div class="sync-line" id="sync-line"></div>
           <button id="confirm-new-btn">Nouvelle commande</button>
         </section>
+
+        <!-- RÉGLAGES : jeton GitHub pour enregistrer le .json dans le repo -->
+        <div id="settings-overlay">
+          <div id="settings-modal">
+            <button id="settings-close" style="position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;border:none;background:var(--paper-2);font-size:13px;cursor:pointer;">✕</button>
+            <h3>⚙️ Enregistrement sur GitHub</h3>
+            <p class="s-desc">Chaque commande validée peut être enregistrée automatiquement dans le dossier <b>orders/</b> de <b>jupiko0/mcdo</b>, sous forme d'un fichier .json, via l'API GitHub.</p>
+            <div id="settings-status"></div>
+            <label>Jeton d'accès GitHub (Personal Access Token)</label>
+            <input type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+            <p class="s-note">Crée un jeton <b>fine-grained</b> sur <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>, limité au repo <b>mcdo</b>, avec la permission <b>Contents: Read and write</b> uniquement. Ce jeton reste dans ton navigateur (jamais envoyé ailleurs qu'à l'API GitHub) — ne le partage pas et ne le mets jamais dans le code du repo.</p>
+            <button id="settings-save">Enregistrer le jeton</button>
+            <button id="settings-clear">Supprimer le jeton enregistré</button>
+          </div>
+        </div>
 
       </div>
     </div>
@@ -374,7 +409,12 @@
 ===================================================================== */
 
 /* ===================== IMAGES (hébergées sur GitHub) ===================== */
-const IMG_BASE = 'https://raw.githubusercontent.com/jupiko0/mcdo/main/images/';
+/* ===================== IMAGES =====================
+   Le fichier va chercher les images dans un dossier "images/" situé au
+   même niveau que ce .html (chemin relatif) — ça fonctionne aussi bien
+   en local qu'une fois hébergé dans le même repo GitHub (ex. GitHub Pages),
+   sans dépendre d'un nom de repo ou d'utilisateur en dur. */
+const IMG_BASE = 'images/';
 
 /* ===================== DONNÉES ===================== */
 const DRINK_CHOICES = [
@@ -850,8 +890,71 @@ function changeQty(uid, delta){
 }
 function removeItem(uid){ cart = cart.filter(i=>String(i.uid)!==uid); renderCartUI(); }
 
+/* ===================== RÉGLAGES GITHUB (jeton + enregistrement du .json) ===================== */
+const GITHUB_REPO = 'jupiko0/mcdo'; // owner/repo
+let githubToken = '';
+try { githubToken = localStorage.getItem('mcdo_gh_token') || ''; } catch(e) { /* stockage indisponible (aperçu sandboxé) */ }
+
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsStatus = document.getElementById('settings-status');
+document.getElementById('settings-btn').onclick = ()=>{
+  document.getElementById('gh-token-input').value = githubToken;
+  settingsStatus.className=''; settingsStatus.textContent='';
+  settingsOverlay.classList.add('show');
+};
+document.getElementById('settings-close').onclick = ()=> settingsOverlay.classList.remove('show');
+settingsOverlay.onclick = (e)=>{ if(e.target===settingsOverlay) settingsOverlay.classList.remove('show'); };
+document.getElementById('settings-save').onclick = ()=>{
+  const val = document.getElementById('gh-token-input').value.trim();
+  if(!val){ settingsStatus.className='err'; settingsStatus.textContent='Colle un jeton avant d\'enregistrer.'; return; }
+  githubToken = val;
+  try { localStorage.setItem('mcdo_gh_token', val); } catch(e) {}
+  settingsStatus.className='ok'; settingsStatus.textContent='Jeton enregistré dans ce navigateur ✅';
+};
+document.getElementById('settings-clear').onclick = ()=>{
+  githubToken = '';
+  try { localStorage.removeItem('mcdo_gh_token'); } catch(e) {}
+  document.getElementById('gh-token-input').value = '';
+  settingsStatus.className='ok'; settingsStatus.textContent='Jeton supprimé.';
+};
+
+function utf8ToBase64(str){
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_,p1)=> String.fromCharCode('0x'+p1)));
+}
+
+/* Crée le fichier orders/commande-<num>.json dans le repo GitHub via l'API Contents */
+async function saveOrderToGithub(orderJson, num){
+  if(!githubToken){
+    return {ok:false, reason:'no_token'};
+  }
+  const path = `orders/commande-${num}-${Date.now()}.json`;
+  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
+  try{
+    const res = await fetch(url, {
+      method:'PUT',
+      headers:{
+        'Authorization': `Bearer ${githubToken}`,
+        'Accept':'application/vnd.github+json',
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({
+        message: `Commande ${num}`,
+        content: utf8ToBase64(JSON.stringify(orderJson, null, 2)),
+        branch:'main'
+      })
+    });
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      return {ok:false, reason:'api_error', status:res.status, message:err.message||''};
+    }
+    return {ok:true, path};
+  } catch(e){
+    return {ok:false, reason:'network', message:String(e)};
+  }
+}
+
 /* ===================== VALIDATION / TICKET ===================== */
-document.getElementById('drawer-checkout').onclick = ()=>{
+document.getElementById('drawer-checkout').onclick = async ()=>{
   if(cart.length===0) return;
   const num = 'A' + (10+Math.floor(Math.random()*89));
   const sub = cart.reduce((s,i)=> s + i.unitPrice*i.qty, 0);
@@ -868,6 +971,29 @@ document.getElementById('drawer-checkout').onclick = ()=>{
   `;
   closeDrawer();
   document.getElementById('screen-confirm').classList.add('show');
+
+  const syncLine = document.getElementById('sync-line');
+  const orderJson = {
+    numero: num,
+    date: new Date().toISOString(),
+    type: orderType==='sur_place' ? 'Sur place' : 'À emporter',
+    total: sub,
+    articles: cart.map(i=>({ nom:i.name, quantite:i.qty, prix_unitaire:i.unitPrice, options:i.opts.map(o=>o.name) }))
+  };
+
+  if(!githubToken){
+    syncLine.textContent = "⚙️ Ajoute un jeton GitHub (icône réglages) pour enregistrer les commandes dans le repo.";
+    return;
+  }
+  syncLine.textContent = '⏳ Enregistrement dans le repo GitHub…';
+  const result = await saveOrderToGithub(orderJson, num);
+  if(result.ok){
+    syncLine.innerHTML = `✅ Commande enregistrée : <b>orders/${result.path.split('/').pop()}</b>`;
+  } else if(result.reason==='api_error') {
+    syncLine.textContent = `⚠️ Échec GitHub (${result.status}) — vérifie les droits du jeton.`;
+  } else {
+    syncLine.textContent = '⚠️ Impossible de contacter GitHub depuis cet aperçu.';
+  }
 };
 document.getElementById('confirm-new-btn').onclick = ()=>{
   cart = [];
